@@ -1,7 +1,7 @@
 'use client';
 import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { Leaf, Send, CheckCircle2, Twitter, Linkedin, Github, ArrowRight } from 'lucide-react';
+import { Leaf, Send, CheckCircle2, Twitter, Linkedin, Github, ArrowRight, Instagram, Facebook } from 'lucide-react';
 import { useLang } from '@/lib/providers';
 
 export default function Footer() {
@@ -27,7 +27,36 @@ export default function Footer() {
           <div className="col-span-2 sm:col-span-1">
             <div className="flex items-center gap-2 mb-3"><div className="h-8 w-8 rounded-lg bg-gradient-to-br from-blue-500 to-emerald-500 flex items-center justify-center"><Leaf className="h-4 w-4 text-white" strokeWidth={2.5} /></div><span className="font-display font-bold text-lg text-gradient-blue">SoilCredit</span></div>
             <p className="text-[13px] text-slate-500 leading-relaxed mb-3">{t('footer.tagline')}</p>
-            <div className="flex gap-1.5">{[Twitter, Linkedin, Github].map((Ic, i) => (<a key={i} href="#" className="h-8 w-8 rounded-lg border border-slate-200 flex items-center justify-center hover:border-blue-300 hover:bg-blue-50 transition"><Ic className="h-3.5 w-3.5 text-slate-500" /></a>))}</div>
+            <div className="flex gap-1.5">
+  {[
+    {
+      icon: Instagram,
+      url: "https://www.instagram.com/soilcredit/",
+      name: "Instagram"
+    },
+    {
+      icon: Linkedin,
+      url: "https://www.linkedin.com/company/soilcredit",
+      name: "LinkedIn"
+    },
+    {
+      icon: Facebook,
+      url: "https://www.facebook.com/profile.php?id=61583439600932&mibex-tid=ZbWKwL",
+      name: "Facebook"
+    }
+  ].map(({ icon: Ic, url, name }) => (
+    <a
+      key={name}
+      href={url}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="h-8 w-8 rounded-lg border border-slate-200 flex items-center justify-center hover:border-blue-300 hover:bg-blue-50 transition"
+      aria-label={name}
+    >
+      <Ic className="h-3.5 w-3.5 text-slate-500" />
+    </a>
+  ))}
+</div>
           </div>
           {[{ title: 'Product', links: ['Overview', t('nav.calc'), t('nav.market'), t('nav.dashboard')] }, { title: 'Company', links: ['About', 'Careers', 'Press', 'Contact'] }, { title: 'Legal', links: ['Privacy', 'Terms', 'Security', 'Cookies'] }].map((c, i) => (
             <div key={i}>
@@ -38,7 +67,7 @@ export default function Footer() {
         </div>
         <div className="pt-6 flex flex-col md:flex-row items-start md:items-center justify-between gap-3">
           <div className="text-[12px] text-slate-500">{t('footer.rights')}</div>
-          <div className="text-[12px] text-slate-500 inline-flex items-center gap-1.5"><span className="h-1.5 w-1.5 rounded-full bg-emerald-500" /> All systems normal</div>
+          <div className="text-[12px] text-slate-500 inline-flex items-center gap-1.5"><span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />soilcreditazerbaijan@gmail.com</div>
         </div>
       </div>
     </footer>
