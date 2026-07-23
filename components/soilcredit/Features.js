@@ -1,41 +1,30 @@
 'use client';
 import { motion } from 'framer-motion';
-import { Brain, Satellite, ShieldCheck, Store, LineChart, Activity, BarChart3, Zap, Cpu, ArrowRight } from 'lucide-react';
+import { Brain, Satellite, ShieldCheck, Store, LineChart, Activity, BarChart3, Zap, ArrowRight } from 'lucide-react';
+import { useLang } from '@/lib/providers';
 
-const FEATURES = [
-  { icon: Brain, title: 'AI Analysis', desc: 'Multimodal foundation models classify vegetation, estimate biomass and predict sequestration trajectories.', color: 'from-emerald-400 to-teal-500' },
-  { icon: Satellite, title: 'Satellite Monitoring', desc: 'Sentinel, Landsat & Planet data ingested every 5 days. 10m resolution. Cloud-masked, atmosphere-corrected.', color: 'from-cyan-400 to-emerald-500' },
-  { icon: ShieldCheck, title: 'Blockchain Security', desc: 'Immutable proofs on a low-carbon L2. Each credit is an NFT with cryptographic provenance.', color: 'from-emerald-500 to-lime-500' },
-  { icon: Store, title: 'Credit Marketplace', desc: 'Peer-to-peer, gasless. Sell to funds, corporates or aggregators. Instant settlement in USDC.', color: 'from-teal-400 to-emerald-600' },
-  { icon: LineChart, title: 'Investment Platform', desc: 'For ESG funds. Portfolio construction, screening, real-time impact reporting and Verra-mapped scoring.', color: 'from-emerald-400 to-green-500' },
-  { icon: Activity, title: 'Climate Dashboard', desc: 'One pane of glass. Track your land health, credit balance, revenue and impact narrative.', color: 'from-lime-400 to-emerald-500' },
-  { icon: BarChart3, title: 'Deep Analytics', desc: 'Time-series decomposition, cohort views and predictive forecasts on your soil carbon curve.', color: 'from-emerald-500 to-teal-600' },
-  { icon: Zap, title: 'Real-Time Monitoring', desc: 'Alerts on deforestation, drought stress, illegal activity — pushed to your phone within minutes.', color: 'from-amber-400 to-emerald-500' },
-];
+const ICONS = [Brain, Satellite, ShieldCheck, Store, LineChart, Activity, BarChart3, Zap];
 
 export default function Features() {
+  const { t } = useLang();
+  const items = (t('features.items') || []).map((f, i) => ({ title: f[0], desc: f[1], Icon: ICONS[i] || Brain }));
   return (
-    <section className="relative py-32 overflow-hidden">
-      <div className="absolute inset-0 -z-10"><div className="absolute top-0 left-1/2 -translate-x-1/2 h-[500px] w-[900px] rounded-full bg-emerald-500/10 blur-[120px]" /></div>
+    <section id="features" className="relative py-24 md:py-32 bg-white">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-        <motion.div initial={{ opacity: 0, y: 30 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true, margin: '-100px' }} transition={{ duration: 0.7 }} className="flex flex-col md:flex-row md:items-end md:justify-between gap-8 mb-16">
-          <div className="max-w-2xl">
-            <div className="inline-flex items-center gap-2 rounded-full glass px-3.5 py-1.5 mb-5"><Cpu className="h-3.5 w-3.5 text-emerald-300" /><span className="text-[11.5px] uppercase tracking-widest text-emerald-200/80 font-semibold">Platform Capabilities</span></div>
-            <h2 className="font-display font-bold text-[38px] md:text-[52px] lg:text-[58px] leading-[1.02] tracking-tight"><span className="text-gradient">Everything you need to measure,</span> <span className="text-gradient-emerald">verify and sell carbon.</span></h2>
-          </div>
-          <p className="text-[15.5px] text-white/60 max-w-sm leading-relaxed">A modular stack built for landowners, funds and climate scientists. Enterprise-grade infrastructure, consumer-grade UX.</p>
+        <motion.div initial={{ opacity: 0, y: 24 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true, margin: '-100px' }} transition={{ duration: 0.6 }} className="text-center max-w-3xl mx-auto mb-14">
+          <span className="chip mb-4">{t('features.tag')}</span>
+          <h2 className="font-display font-bold text-[34px] md:text-[52px] leading-[1.05] tracking-tight"><span className="text-gradient-bg">{t('features.title')}</span></h2>
         </motion.div>
         <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-5">
-          {FEATURES.map((f, i) => {
-            const Icon = f.icon;
+          {items.map((f, i) => {
+            const Icon = f.Icon;
             return (
-              <motion.div key={f.title} initial={{ opacity: 0, y: 30 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true, margin: '-50px' }} transition={{ duration: 0.6, delay: (i % 4) * 0.08 }}
-                className="feature-card group relative rounded-2xl glass p-6 h-full cursor-pointer overflow-hidden">
-                <div className={`absolute -top-16 -right-16 h-40 w-40 rounded-full bg-gradient-to-br ${f.color} opacity-0 group-hover:opacity-20 blur-3xl transition-opacity duration-500`} />
-                <div className={`relative h-11 w-11 rounded-xl bg-gradient-to-br ${f.color} flex items-center justify-center mb-5 shadow-[0_8px_24px_-6px_rgba(52,211,153,0.4)]`}><Icon className="h-5 w-5 text-white" strokeWidth={2.2} /></div>
-                <h3 className="font-display font-semibold text-[17px] tracking-tight mb-2 text-white">{f.title}</h3>
-                <p className="text-[13.5px] text-white/55 leading-relaxed">{f.desc}</p>
-                <div className="relative mt-5 flex items-center gap-1.5 text-[12px] font-medium text-emerald-400/0 group-hover:text-emerald-400 transition-colors">Learn more <ArrowRight className="h-3.5 w-3.5" /></div>
+              <motion.div key={i} initial={{ opacity: 0, y: 24 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.5, delay: (i % 4) * 0.06 }}
+                className="card-soft group p-5 cursor-pointer">
+                <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-blue-500 to-emerald-500 flex items-center justify-center mb-4 shadow-md shadow-blue-500/15"><Icon className="h-4.5 w-4.5 text-white" strokeWidth={2.2} /></div>
+                <div className="font-display font-semibold text-[16px] text-slate-900 mb-1.5">{f.title}</div>
+                <div className="text-[13px] text-slate-600 leading-relaxed">{f.desc}</div>
+                <div className="mt-4 flex items-center gap-1.5 text-[12px] font-medium text-blue-600 opacity-0 group-hover:opacity-100 transition">Learn more <ArrowRight className="h-3.5 w-3.5" /></div>
               </motion.div>
             );
           })}

@@ -203,6 +203,188 @@ backend:
       - working: true
         agent: "testing"
         comment: "Tested POST /api/newsletter with payload {email:'test@example.com'}. Returns 200 with { ok: true, id: <uuid> }. UUID format validated."
+  - task: "Auth signup"
+    implemented: true
+    working: true
+    file: "app/api/[[...path]]/route.js"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: "POST /api/auth/signup with {email,password,name,role,company?}. Returns {ok,token,user}. Password min 6 chars, duplicate email returns 400."
+      - working: true
+        agent: "testing"
+        comment: "Tested signup for landowner and company roles. Duplicate email validation works (400). Short password validation works (400). No sensitive data (hash/salt/_id) leaked. Fixed minor issue: _id was being leaked in currentUser() helper - added _id to destructuring exclusion."
+  - task: "Auth login"
+    implemented: true
+    working: true
+    file: "app/api/[[...path]]/route.js"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: "POST /api/auth/login with {email,password}. Returns {ok,token,user}. Wrong credentials return 401."
+      - working: true
+        agent: "testing"
+        comment: "Tested login with correct credentials (200) and wrong password (401). Token generation works correctly."
+  - task: "Auth me (current user)"
+    implemented: true
+    working: true
+    file: "app/api/[[...path]]/route.js"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: "GET /api/auth/me with Bearer token. Returns {ok,user}. No token returns 401."
+      - working: true
+        agent: "testing"
+        comment: "Tested with valid token (200) and without token (401). No sensitive data leaked after fix."
+  - task: "Auth logout"
+    implemented: true
+    working: true
+    file: "app/api/[[...path]]/route.js"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: "POST /api/auth/logout with Bearer token. Deletes session from DB."
+      - working: true
+        agent: "testing"
+        comment: "Tested logout (200). Verified token is invalidated - subsequent /api/auth/me calls return 401."
+  - task: "Lands CRUD - Create"
+    implemented: true
+    working: true
+    file: "app/api/[[...path]]/route.js"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: "POST /api/lands (landowner only) with {name,location,area,soil,region,forestType,vegetation}. Returns {ok,land} with carbon estimate. Company role gets 403."
+      - working: true
+        agent: "testing"
+        comment: "Tested land creation by landowner (200) with correct carbon estimate (area=200, caspian region -> 1930.5 tCO2/year). Company role correctly blocked (403). No token correctly blocked (401). Initial state: forSale=false, creditsAvailable=0."
+  - task: "Lands CRUD - Read"
+    implemented: true
+    working: true
+    file: "app/api/[[...path]]/route.js"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: "GET /api/lands (authenticated) returns user's lands only."
+      - working: true
+        agent: "testing"
+        comment: "Tested GET /api/lands. Returns array of user's lands. Verified created land appears in list."
+  - task: "Lands CRUD - Update"
+    implemented: true
+    working: true
+    file: "app/api/[[...path]]/route.js"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: "PUT /api/lands/:id (owner only). Updates land fields. Non-owner gets 403."
+      - working: true
+        agent: "testing"
+        comment: "Tested land update by owner (200) - forSale=true, priceCredit=45. Non-owner correctly blocked (403)."
+  - task: "Lands CRUD - Delete"
+    implemented: true
+    working: true
+    file: "app/api/[[...path]]/route.js"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: "DELETE /api/lands/:id (owner only). Removes land. Non-owner gets 403."
+      - working: true
+        agent: "testing"
+        comment: "Tested land deletion by owner (200). Non-owner correctly blocked (403). Verified land removed from marketplace after deletion."
+  - task: "Carbon entries - Add"
+    implemented: true
+    working: true
+    file: "app/api/[[...path]]/route.js"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: "POST /api/lands/:id/carbon (owner only) with {date,tCO2,note,method}. Returns {ok,entry,totalCredits}. Updates land.creditsAvailable."
+      - working: true
+        agent: "testing"
+        comment: "Tested adding carbon entries. First entry (500 tCO2) -> totalCredits=500, creditsAvailable=500. Second entry (250 tCO2) -> totalCredits=750. Credits correctly accumulated."
+  - task: "Carbon entries - Delete"
+    implemented: true
+    working: true
+    file: "app/api/[[...path]]/route.js"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: "DELETE /api/lands/:id/carbon/:entryId (owner only). Removes entry and recalculates creditsAvailable."
+      - working: true
+        agent: "testing"
+        comment: "Tested deleting carbon entry. After deleting first entry (500 tCO2), totalCredits=250, creditsAvailable=250. Non-owner correctly blocked (403)."
+  - task: "Marketplace public listings"
+    implemented: true
+    working: true
+    file: "app/api/[[...path]]/route.js"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: "GET /api/marketplace (public, no auth) returns only lands where forSale=true."
+      - working: true
+        agent: "testing"
+        comment: "Tested marketplace visibility. Land appears in listings only after forSale=true. Correct priceCredit displayed."
+  - task: "Purchase credits"
+    implemented: true
+    working: true
+    file: "app/api/[[...path]]/route.js"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: "POST /api/purchase (company only) with {landId,quantity}. Returns {ok,purchase}. Updates land.creditsSold and creditsAvailable. Landowner gets 403."
+      - working: true
+        agent: "testing"
+        comment: "Tested purchase by company (200). Quantity=100 -> creditsSold=100, creditsAvailable=150. Insufficient credits correctly blocked (400). Landowner role correctly blocked (403). No token correctly blocked (401)."
+  - task: "Get purchases"
+    implemented: true
+    working: true
+    file: "app/api/[[...path]]/route.js"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: "GET /api/purchases (authenticated). Company sees own purchases, landowner sees sales of their lands."
+      - working: true
+        agent: "testing"
+        comment: "Tested GET /api/purchases. Company sees 1 purchase. Landowner sees same purchase (as owner). Correct role-based filtering."
 
 frontend:
   - task: "Full SoilCredit landing page (all sections)"
@@ -220,7 +402,7 @@ frontend:
 metadata:
   created_by: "main_agent"
   version: "1.0"
-  test_sequence: 1
+  test_sequence: 2
   run_ui: false
 
 test_plan:
@@ -232,5 +414,62 @@ test_plan:
 agent_communication:
   - agent: "main"
     message: "Backend API implemented as catch-all Next.js route at /api/[[...path]]. All endpoints prefixed with /api. MongoDB via MONGO_URL env, DB name from DB_NAME (defaults to 'soilcredit'). Please test happy paths + basic validation (missing body -> should still work with defaults or return 500 gracefully). Use uuid ids (not ObjectId)."
+  - agent: "main"
+    message: "MAJOR UPDATE: Added full auth (signup/login with roles landowner|company), sessions via Bearer token, land CRUD scoped to owner, carbon-entry add/delete, marketplace shows only forSale lands, purchase endpoint for companies. Please test all new endpoints end-to-end.
+
+New endpoints to test:
+  * POST /api/auth/signup {email,password,name,role,company?} -> {ok,token,user}
+  * POST /api/auth/login {email,password} -> {ok,token,user}
+  * GET  /api/auth/me (Bearer) -> {ok,user}
+  * POST /api/auth/logout (Bearer)
+  * GET  /api/lands (Bearer landowner) -> user's lands
+  * POST /api/lands (Bearer landowner) {name,location,area,soil,region,forestType,vegetation,description,priceCredit} -> {ok,land}
+  * PUT  /api/lands/:id (Bearer, owner only) -> update
+  * DELETE /api/lands/:id (Bearer, owner only)
+  * POST /api/lands/:id/carbon (Bearer, owner only) {date,tCO2,note,method} -> {ok,entry,totalCredits}
+  * DELETE /api/lands/:id/carbon/:entryId (Bearer, owner only)
+  * GET  /api/marketplace (public) -> only lands where forSale=true
+  * POST /api/purchase (Bearer company) {landId,quantity} -> {ok,purchase}; landowner should get 403
+  * GET  /api/purchases (Bearer) -> company sees own purchases, landowner sees sales of their lands
+
+Auth/role rules:
+  - landowner cannot POST /api/purchase (403)
+  - company cannot POST /api/lands (403)
+  - one user cannot edit/delete another's land (403)
+  - unauthenticated request to protected routes -> 401
+
+Password rules: min 6 chars, duplicate email -> 400. Password hashing uses Node crypto pbkdf2Sync, salt per user, no plaintext returned.
+
+Suggested flow to verify persistence + role restrictions:
+  1) signup landowner A, signup company B
+  2) A creates a land with area=200 soil=loamy region=caspian forestType=primary vegetation=dense -> should return estimate with estimatedCarbonPerYear ~ 2457
+  3) A adds carbon entry tCO2=500 -> land.creditsAvailable should become 500
+  4) A PUT land -> forSale=true, priceCredit=45
+  5) GET /api/marketplace (public) -> land visible
+  6) B (company) POST /api/purchase {landId, quantity: 100} -> succeeds. creditsSold=100, creditsAvailable=400 on land afterwards
+  7) A tries POST /api/purchase -> 403
+  8) B tries POST /api/lands -> 403
+  9) GET /api/purchases as B -> shows 1 purchase; as A -> shows 1 (same purchase, as ownerId).
+  10) A DELETE carbon entry -> creditsAvailable recomputes correctly
+  11) A DELETE land -> gone from marketplace
+
+Also test /api/calculator still works (POST with area=1000,soil=loamy,region=tropical,forestType=primary,vegetation=dense should still = 12285).
+
+Report any failures with request/response details."
   - agent: "testing"
     message: "Backend testing completed successfully. All 11 tests passed (health, root, stats, marketplace, calculator with valid/empty input, contact, land, newsletter, stats persistence, 404). No critical issues found. All endpoints return correct status codes, proper data structures, and UUID ids. MongoDB persistence verified. Carbon calculation math is accurate. Ready for production."
+  - agent: "testing"
+    message: "Phase 2 backend testing completed. Ran comprehensive 30-test suite covering all auth, land CRUD, carbon entries, and purchase endpoints. Found and fixed 1 minor security issue: MongoDB _id was being leaked in GET /api/auth/me response. Fixed by adding _id to destructuring exclusion in currentUser() helper function. All 30 tests now pass:
+    
+    ✅ Auth signup (landowner & company roles, duplicate email validation, password length validation)
+    ✅ Auth login (correct credentials, wrong password handling)
+    ✅ Auth me (with/without token, no sensitive data leak after fix)
+    ✅ Auth logout (token invalidation)
+    ✅ Lands CRUD (create/read/update/delete with proper role restrictions)
+    ✅ Carbon entries (add/delete with credit recalculation)
+    ✅ Marketplace (public visibility for forSale lands)
+    ✅ Purchase (company-only, quantity validation, credit updates)
+    ✅ Get purchases (role-based filtering)
+    ✅ Calculator regression (unchanged functionality)
+    
+    All role restrictions working correctly (landowner cannot purchase, company cannot create lands, users cannot modify others' lands). All authentication checks working (401 for missing tokens, 403 for wrong roles). Carbon credit calculations accurate. MongoDB persistence verified. No critical issues remaining."

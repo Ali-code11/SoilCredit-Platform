@@ -1,26 +1,34 @@
 import { NextResponse } from 'next/server';
 import { MongoClient } from 'mongodb';
 import { v4 as uuidv4 } from 'uuid';
+import crypto from 'crypto';
 
 const DB_NAME = process.env.DB_NAME && process.env.DB_NAME !== 'your_database_name' ? process.env.DB_NAME : 'soilcredit';
-
-let cachedClient = null;
+let cached = null;
 async function getDb() {
-  if (!cachedClient) {
-    cachedClient = new MongoClient(process.env.MONGO_URL);
-    await cachedClient.connect();
-  }
-  return cachedClient.db(DB_NAME);
+  if (!cached) { cached = new MongoClient(process.env.MONGO_URL); await cached.connect(); }
+  return cached.db(DB_NAME);
 }
 
-/* ---------- Carbon estimation formula (IPCC Tier‑1 approximation) ---------- */
+/* ---------- crypto helpers ---------- */
+function hashPassword(pw, salt) {
+  const s = salt || crypto.randomBytes(16).toString('hex');
+  const h = crypto.pbkdf2Sync(pw, s, 60000, 32, 'sha256').toString('hex');
+  return { salt: s, hash: h };
+}
+function verifyPassword(pw, salt, hash) {
+  const { hash: h2 } = hashPassword(pw, salt);
+  return crypto.timingSafeEqual(Buffer.from(hash, 'hex'), Buffer.from(h2, 'hex'));
+}
+
+/* ---------- carbon estimation ---------- */
 const FACTORS = {
   soil: { sandy: 0.6, loamy: 1.0, clay: 1.2, peat: 1.8, silty: 0.9 },
-  region: { tropical: 1.4, temperate: 1.0, boreal: 0.7, arid: 0.5, mediterranean: 0.9 },
+  region: { tropical: 1.4, temperate: 1.0, boreal: 0.7, arid: 0.5, mediterranean: 0.9, caspian: 1.1 },
   forestType: { primary: 1.5, secondary: 1.1, plantation: 0.8, agroforestry: 1.0, grassland: 0.6, wetland: 1.6 },
   vegetation: { sparse: 0.5, moderate: 0.9, dense: 1.3, veryDense: 1.55 },
 };
-const BASE_RATE = 4.5; // tCO2/ha/year baseline
+const BASE_RATE = 4.5;
 const CREDIT_PRICE_USD = 42.8;
 
 function estimate({ area, soil, region, forestType, vegetation }) {
@@ -30,108 +38,248 @@ function estimate({ area, soil, region, forestType, vegetation }) {
   const f = FACTORS.forestType[forestType] ?? 1;
   const v = FACTORS.vegetation[vegetation] ?? 1;
   const perYear = a * BASE_RATE * s * r * f * v;
-  const credits = perYear;
-  const income = credits * CREDIT_PRICE_USD;
-  // 10 year projection
   const projection = Array.from({ length: 10 }, (_, i) => {
-    const yr = i + 1;
-    const maturity = 1 - Math.exp(-yr / 4);
-    return {
-      year: 2025 + i,
-      carbon: +(perYear * yr * (0.6 + 0.4 * maturity)).toFixed(2),
-      credits: +(perYear * yr * (0.6 + 0.4 * maturity)).toFixed(2),
-      income: +(perYear * yr * (0.6 + 0.4 * maturity) * CREDIT_PRICE_USD).toFixed(2),
-    };
+    const yr = i + 1; const maturity = 1 - Math.exp(-yr / 4);
+    const carbon = +(perYear * yr * (0.6 + 0.4 * maturity)).toFixed(2);
+    return { year: 2025 + i, carbon, credits: carbon, income: +(carbon * CREDIT_PRICE_USD).toFixed(2) };
   });
   return {
     estimatedCarbonPerYear: +perYear.toFixed(2),
     tenYearCarbon: +projection[9].carbon.toFixed(2),
-    creditsPerYear: +credits.toFixed(2),
-    annualIncomeUSD: +income.toFixed(2),
+    creditsPerYear: +perYear.toFixed(2),
+    annualIncomeUSD: +(perYear * CREDIT_PRICE_USD).toFixed(2),
     tenYearIncomeUSD: +projection[9].income.toFixed(2),
     creditPrice: CREDIT_PRICE_USD,
     projection,
   };
 }
 
-/* ---------- Seed data ---------- */
-const MARKETPLACE_SEED = [
-  { id: 'SC-4821', title: 'Amazonian Rainforest Corridor', owner: 'Sitio Verde Cooperative', location: 'Pará, Brazil', area: 2840, price: 42.8, esg: 96, credits: 12800, status: 'verified', category: 'Primary Forest', tag: 'Gold', flag: '🇧🇷' },
-  { id: 'SC-3392', title: 'Serengeti Grassland Restoration', owner: 'Maasai Conservancy Trust', location: 'Arusha, Tanzania', area: 5100, price: 38.5, esg: 92, credits: 9400, status: 'verified', category: 'Grassland', tag: 'Verra', flag: '🇹🇿' },
-  { id: 'SC-2110', title: 'Boreal Peatland Sanctuary', owner: 'North Karelia Estate', location: 'Karelia, Finland', area: 1780, price: 55.2, esg: 98, credits: 15200, status: 'trending', category: 'Peatland', tag: 'Gold', flag: '🇫🇮' },
-  { id: 'SC-5620', title: 'Andean Cloud Forest', owner: 'Fundación Nublado', location: 'Cusco, Peru', area: 940, price: 48.9, esg: 94, credits: 6100, status: 'verified', category: 'Cloud Forest', tag: 'CCB', flag: '🇵🇪' },
-  { id: 'SC-7710', title: 'Mangrove Blue Carbon', owner: 'Sundarbans Collective', location: 'Khulna, Bangladesh', area: 620, price: 61.4, esg: 99, credits: 4200, status: 'hot', category: 'Mangrove', tag: 'Verra', flag: '🇧🇩' },
-  { id: 'SC-8834', title: 'Regenerative Agroforestry Farm', owner: 'Kikuyu Farmers Union', location: 'Nyeri, Kenya', area: 3400, price: 35.7, esg: 89, credits: 7800, status: 'new', category: 'Agroforestry', tag: 'Plan Vivo', flag: '🇰🇪' },
-];
+/* ---------- auth helpers ---------- */
+async function currentUser(req) {
+  const auth = req.headers.get('authorization') || '';
+  const token = auth.startsWith('Bearer ') ? auth.slice(7) : null;
+  if (!token) return null;
+  const db = await getDb();
+  const session = await db.collection('sessions').findOne({ token });
+  if (!session) return null;
+  const user = await db.collection('users').findOne({ id: session.userId });
+  if (!user) return null;
+  const { hash, salt, _id, ...pub } = user; return pub;
+}
 
-/* ---------- Router ---------- */
 async function json(req) { try { return await req.json(); } catch { return {}; } }
+function ok(data) { return NextResponse.json({ ok: true, ...data }); }
+function err(msg, code=400) { return NextResponse.json({ ok: false, error: msg }, { status: code }); }
 
+/* ---------- router ---------- */
 async function handle(req, params) {
   const segs = (await params)?.path || [];
   const route = segs.join('/');
   const method = req.method;
 
   try {
-    if (route === '' || route === 'health') {
-      return NextResponse.json({ ok: true, service: 'soilcredit', ts: Date.now() });
-    }
+    /* Public */
+    if (route === '' || route === 'health') return NextResponse.json({ ok: true, service: 'soilcredit', ts: Date.now() });
 
     if (route === 'stats' && method === 'GET') {
       const db = await getDb();
-      const [calcs, contacts, lands] = await Promise.all([
-        db.collection('calculations').countDocuments(),
-        db.collection('contacts').countDocuments(),
+      const [users, lands, purchases] = await Promise.all([
+        db.collection('users').countDocuments(),
         db.collection('lands').countDocuments(),
+        db.collection('purchases').countDocuments(),
       ]);
-      return NextResponse.json({
-        treesProtected: 1284000 + lands * 47,
-        carbonCapturedT: 92000 + calcs * 12,
-        registeredLands: 7420 + lands,
-        activeInvestors: 430 + Math.floor(contacts / 3),
-        countries: 42,
-        creditPrice: CREDIT_PRICE_USD,
-      });
-    }
-
-    if (route === 'marketplace' && method === 'GET') {
-      return NextResponse.json({ listings: MARKETPLACE_SEED });
+      return ok({ users, lands, purchases, treesProtected: 1284000 + lands * 47, carbonCapturedT: 92000 + lands * 12, activeInvestors: 430 + users, countries: 42, creditPrice: CREDIT_PRICE_USD });
     }
 
     if (route === 'calculator' && method === 'POST') {
-      const body = await json(req);
-      const result = estimate(body);
+      const body = await json(req); const result = estimate(body);
       const db = await getDb();
-      const doc = { id: uuidv4(), inputs: body, result, createdAt: new Date().toISOString() };
-      await db.collection('calculations').insertOne(doc);
-      return NextResponse.json({ ok: true, id: doc.id, ...result });
+      await db.collection('calculations').insertOne({ id: uuidv4(), inputs: body, result, createdAt: new Date().toISOString() });
+      return ok(result);
     }
 
     if (route === 'contact' && method === 'POST') {
-      const body = await json(req);
-      const db = await getDb();
+      const body = await json(req); const db = await getDb();
       const doc = { id: uuidv4(), ...body, createdAt: new Date().toISOString() };
-      await db.collection('contacts').insertOne(doc);
-      return NextResponse.json({ ok: true, id: doc.id });
-    }
-
-    if (route === 'land' && method === 'POST') {
-      const body = await json(req);
-      const db = await getDb();
-      const doc = { id: uuidv4(), ...body, status: 'pending', createdAt: new Date().toISOString() };
-      await db.collection('lands').insertOne(doc);
-      return NextResponse.json({ ok: true, id: doc.id });
+      await db.collection('contacts').insertOne(doc); return ok({ id: doc.id });
     }
 
     if (route === 'newsletter' && method === 'POST') {
-      const body = await json(req);
-      const db = await getDb();
+      const body = await json(req); const db = await getDb();
       const doc = { id: uuidv4(), email: body.email, createdAt: new Date().toISOString() };
-      await db.collection('newsletter').insertOne(doc);
-      return NextResponse.json({ ok: true, id: doc.id });
+      await db.collection('newsletter').insertOne(doc); return ok({ id: doc.id });
     }
 
-    return NextResponse.json({ ok: false, error: 'Not found', route }, { status: 404 });
+    /* ------ AUTH ------ */
+    if (route === 'auth/signup' && method === 'POST') {
+      const b = await json(req);
+      const email = String(b.email || '').toLowerCase().trim();
+      const password = String(b.password || '');
+      const name = String(b.name || '').trim();
+      const role = ['landowner', 'company'].includes(b.role) ? b.role : 'landowner';
+      const company = String(b.company || '').trim();
+      if (!email || !password || !name) return err('Missing fields');
+      if (password.length < 6) return err('Password too short');
+      const db = await getDb();
+      const exists = await db.collection('users').findOne({ email });
+      if (exists) return err('Email already registered');
+      const { salt, hash } = hashPassword(password);
+      const user = { id: uuidv4(), email, name, role, company: role === 'company' ? company : null, salt, hash, createdAt: new Date().toISOString() };
+      await db.collection('users').insertOne(user);
+      const token = uuidv4();
+      await db.collection('sessions').insertOne({ token, userId: user.id, createdAt: new Date().toISOString() });
+      const { hash: _h, salt: _s, _id, ...pub } = user;
+      return ok({ token, user: pub });
+    }
+
+    if (route === 'auth/login' && method === 'POST') {
+      const b = await json(req);
+      const email = String(b.email || '').toLowerCase().trim();
+      const password = String(b.password || '');
+      const db = await getDb();
+      const u = await db.collection('users').findOne({ email });
+      if (!u) return err('Invalid credentials', 401);
+      if (!verifyPassword(password, u.salt, u.hash)) return err('Invalid credentials', 401);
+      const token = uuidv4();
+      await db.collection('sessions').insertOne({ token, userId: u.id, createdAt: new Date().toISOString() });
+      const { hash: _h, salt: _s, _id, ...pub } = u;
+      return ok({ token, user: pub });
+    }
+
+    if (route === 'auth/me' && method === 'GET') {
+      const u = await currentUser(req); if (!u) return err('Unauthenticated', 401);
+      return ok({ user: u });
+    }
+
+    if (route === 'auth/logout' && method === 'POST') {
+      const auth = req.headers.get('authorization') || '';
+      const token = auth.startsWith('Bearer ') ? auth.slice(7) : null;
+      if (token) { const db = await getDb(); await db.collection('sessions').deleteOne({ token }); }
+      return ok({});
+    }
+
+    /* ------ LANDS (landowner-scoped CRUD) ------ */
+    if (route === 'lands' && method === 'GET') {
+      const u = await currentUser(req); if (!u) return err('Unauthenticated', 401);
+      const db = await getDb();
+      const lands = await db.collection('lands').find({ ownerId: u.id }).sort({ createdAt: -1 }).toArray();
+      return ok({ lands });
+    }
+
+    if (route === 'lands' && method === 'POST') {
+      const u = await currentUser(req); if (!u) return err('Unauthenticated', 401);
+      if (u.role !== 'landowner') return err('Only landowners can add land', 403);
+      const b = await json(req);
+      const est = estimate({ area: b.area, soil: b.soil, region: b.region, forestType: b.forestType, vegetation: b.vegetation });
+      const land = {
+        id: uuidv4(), ownerId: u.id, ownerName: u.name,
+        name: b.name || 'Untitled Plot',
+        location: b.location || '',
+        area: Number(b.area) || 0,
+        soil: b.soil || 'loamy',
+        region: b.region || 'temperate',
+        forestType: b.forestType || 'primary',
+        vegetation: b.vegetation || 'moderate',
+        description: b.description || '',
+        estimate: est,
+        carbonEntries: [],
+        forSale: false,
+        priceCredit: CREDIT_PRICE_USD,
+        creditsAvailable: 0,
+        creditsSold: 0,
+        createdAt: new Date().toISOString(),
+      };
+      const db = await getDb();
+      await db.collection('lands').insertOne(land);
+      return ok({ land });
+    }
+
+    const landIdMatch = route.match(/^lands\/([^/]+)$/);
+    if (landIdMatch) {
+      const u = await currentUser(req); if (!u) return err('Unauthenticated', 401);
+      const id = landIdMatch[1]; const db = await getDb();
+      const land = await db.collection('lands').findOne({ id });
+      if (!land) return err('Land not found', 404);
+      if (land.ownerId !== u.id) return err('Forbidden', 403);
+      if (method === 'PUT') {
+        const b = await json(req);
+        const upd = {};
+        ['name','location','area','soil','region','forestType','vegetation','description','priceCredit','forSale','creditsAvailable'].forEach(k => { if (b[k] !== undefined) upd[k] = b[k]; });
+        if (['area','soil','region','forestType','vegetation'].some(k => k in upd)) {
+          const merged = { ...land, ...upd };
+          upd.estimate = estimate(merged);
+        }
+        upd.updatedAt = new Date().toISOString();
+        await db.collection('lands').updateOne({ id }, { $set: upd });
+        const updated = await db.collection('lands').findOne({ id });
+        return ok({ land: updated });
+      }
+      if (method === 'DELETE') {
+        await db.collection('lands').deleteOne({ id });
+        return ok({});
+      }
+      if (method === 'GET') return ok({ land });
+    }
+
+    /* ------ CARBON entries (nested under land) ------ */
+    const carbonAdd = route.match(/^lands\/([^/]+)\/carbon$/);
+    if (carbonAdd && method === 'POST') {
+      const u = await currentUser(req); if (!u) return err('Unauthenticated', 401);
+      const db = await getDb(); const land = await db.collection('lands').findOne({ id: carbonAdd[1] });
+      if (!land) return err('Not found', 404); if (land.ownerId !== u.id) return err('Forbidden', 403);
+      const b = await json(req);
+      const entry = { id: uuidv4(), date: b.date || new Date().toISOString().slice(0,10), tCO2: Number(b.tCO2) || 0, note: b.note || '', method: b.method || 'satellite' };
+      const entries = [...(land.carbonEntries || []), entry];
+      const total = entries.reduce((a, e) => a + (e.tCO2 || 0), 0);
+      await db.collection('lands').updateOne({ id: land.id }, { $set: { carbonEntries: entries, creditsAvailable: total - (land.creditsSold || 0) } });
+      return ok({ entry, totalCredits: total });
+    }
+
+    const carbonDel = route.match(/^lands\/([^/]+)\/carbon\/([^/]+)$/);
+    if (carbonDel && method === 'DELETE') {
+      const u = await currentUser(req); if (!u) return err('Unauthenticated', 401);
+      const db = await getDb(); const land = await db.collection('lands').findOne({ id: carbonDel[1] });
+      if (!land) return err('Not found', 404); if (land.ownerId !== u.id) return err('Forbidden', 403);
+      const entries = (land.carbonEntries || []).filter(e => e.id !== carbonDel[2]);
+      const total = entries.reduce((a, e) => a + (e.tCO2 || 0), 0);
+      await db.collection('lands').updateOne({ id: land.id }, { $set: { carbonEntries: entries, creditsAvailable: total - (land.creditsSold || 0) } });
+      return ok({ totalCredits: total });
+    }
+
+    /* ------ MARKETPLACE (public listings for sale) ------ */
+    if (route === 'marketplace' && method === 'GET') {
+      const db = await getDb();
+      const lands = await db.collection('lands').find({ forSale: true }).sort({ createdAt: -1 }).toArray();
+      return ok({ listings: lands });
+    }
+
+    /* ------ PURCHASE (company only) ------ */
+    if (route === 'purchase' && method === 'POST') {
+      const u = await currentUser(req); if (!u) return err('Unauthenticated', 401);
+      if (u.role !== 'company') return err('Only companies can purchase credits', 403);
+      const b = await json(req);
+      const landId = b.landId; const qty = Math.max(1, Number(b.quantity) || 1);
+      const db = await getDb();
+      const land = await db.collection('lands').findOne({ id: landId });
+      if (!land || !land.forSale) return err('Not available', 404);
+      const available = (land.creditsAvailable || 0);
+      if (qty > available) return err('Not enough credits available');
+      const total = qty * (land.priceCredit || CREDIT_PRICE_USD);
+      const purchase = { id: uuidv4(), companyId: u.id, companyName: u.company || u.name, landId, landName: land.name, ownerId: land.ownerId, quantity: qty, pricePerCredit: land.priceCredit || CREDIT_PRICE_USD, totalUSD: +total.toFixed(2), createdAt: new Date().toISOString() };
+      await db.collection('purchases').insertOne(purchase);
+      await db.collection('lands').updateOne({ id: land.id }, { $set: { creditsSold: (land.creditsSold || 0) + qty, creditsAvailable: available - qty } });
+      return ok({ purchase });
+    }
+
+    if (route === 'purchases' && method === 'GET') {
+      const u = await currentUser(req); if (!u) return err('Unauthenticated', 401);
+      const db = await getDb();
+      const query = u.role === 'company' ? { companyId: u.id } : { ownerId: u.id };
+      const purchases = await db.collection('purchases').find(query).sort({ createdAt: -1 }).toArray();
+      return ok({ purchases });
+    }
+
+    return err('Not found: ' + route, 404);
   } catch (e) {
     console.error('API error:', e);
     return NextResponse.json({ ok: false, error: e.message }, { status: 500 });
@@ -142,3 +290,4 @@ export async function GET(req, ctx) { return handle(req, ctx.params); }
 export async function POST(req, ctx) { return handle(req, ctx.params); }
 export async function PUT(req, ctx) { return handle(req, ctx.params); }
 export async function DELETE(req, ctx) { return handle(req, ctx.params); }
+export async function PATCH(req, ctx) { return handle(req, ctx.params); }
