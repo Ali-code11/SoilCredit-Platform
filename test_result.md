@@ -101,3 +101,136 @@
 #====================================================================================================
 # Testing Data - Main Agent and testing sub agent both should log testing data below this section
 #====================================================================================================
+
+user_problem_statement: "Build the SoilCredit climate-tech platform website (Phase 1 + Phase 2 complete) — Next.js frontend + MongoDB-backed API for a modern climate/ESG marketplace with AI + satellite + carbon credit calculations."
+
+backend:
+  - task: "Health/root API endpoint"
+    implemented: true
+    working: true
+    file: "app/api/[[...path]]/route.js"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: "GET /api/health returns { ok, service, ts }. Also GET /api (empty path) returns same. Verified manually via curl."
+      - working: true
+        agent: "testing"
+        comment: "Tested GET /api/health and GET /api (root). Both return 200 with correct structure: { ok: true, service: 'soilcredit', ts: <number> }. All validations passed."
+  - task: "Stats endpoint"
+    implemented: true
+    working: true
+    file: "app/api/[[...path]]/route.js"
+    stuck_count: 0
+    priority: "medium"
+    needs_retesting: false
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: "GET /api/stats aggregates MongoDB counts + baseline numbers. Returns { treesProtected, carbonCapturedT, registeredLands, activeInvestors, countries, creditPrice }."
+      - working: true
+        agent: "testing"
+        comment: "Tested GET /api/stats. Returns 200 with all required keys (treesProtected, carbonCapturedT, registeredLands, activeInvestors, countries, creditPrice). creditPrice correctly equals 42.8. Persistence verified: after adding 1 land and 2 calculations, stats correctly updated (lands +1, trees +47, carbon +24)."
+  - task: "Marketplace listings"
+    implemented: true
+    working: true
+    file: "app/api/[[...path]]/route.js"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: "GET /api/marketplace returns seeded array of 6 detailed carbon credit listings with id/title/owner/location/area/price/esg/credits/status/category/tag/flag."
+      - working: true
+        agent: "testing"
+        comment: "Tested GET /api/marketplace. Returns 200 with { listings: [...] }. Verified listings.length === 6 and all 6 listings contain required fields: id, title, owner, location, area, price, esg, credits, status, category, tag, flag."
+  - task: "Carbon calculator (IPCC Tier-1)"
+    implemented: true
+    working: true
+    file: "app/api/[[...path]]/route.js"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: "POST /api/calculator with {area,soil,region,forestType,vegetation}. Persists to MongoDB `calculations` collection with uuid id. Returns per-year carbon/credits/income + 10-year projection array. Verified with curl."
+      - working: true
+        agent: "testing"
+        comment: "Tested POST /api/calculator with valid input (area=1000, soil=loamy, region=tropical, forestType=primary, vegetation=dense). Returns 200 with correct structure including ok=true, UUID id, estimatedCarbonPerYear=12285 (math verified: 1000*4.5*1.0*1.4*1.5*1.3), creditPrice=42.8, and 10-item projection array. Also tested with empty body {} - returns 200 with estimatedCarbonPerYear=0 without crashing. MongoDB persistence verified."
+  - task: "Contact form submission"
+    implemented: true
+    working: true
+    file: "app/api/[[...path]]/route.js"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: "POST /api/contact stores {name,email,company,message,createdAt,uuid} into MongoDB `contacts` collection."
+      - working: true
+        agent: "testing"
+        comment: "Tested POST /api/contact with payload {name:'Ada Lovelace', email:'ada@planet.earth', company:'Analytics Engine', message:'Interested in ESG marketplace'}. Returns 200 with { ok: true, id: <uuid> }. UUID format validated."
+  - task: "Land registration submission"
+    implemented: true
+    working: true
+    file: "app/api/[[...path]]/route.js"
+    stuck_count: 0
+    priority: "medium"
+    needs_retesting: false
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: "POST /api/land stores land registration into MongoDB `lands` collection with status=pending."
+      - working: true
+        agent: "testing"
+        comment: "Tested POST /api/land with payload {name:'Test Plot', area:120, region:'tropical'}. Returns 200 with { ok: true, id: <uuid> }. UUID format validated. Persistence verified via stats endpoint."
+  - task: "Newsletter subscription"
+    implemented: true
+    working: true
+    file: "app/api/[[...path]]/route.js"
+    stuck_count: 0
+    priority: "low"
+    needs_retesting: false
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: "POST /api/newsletter stores email into MongoDB `newsletter` collection."
+      - working: true
+        agent: "testing"
+        comment: "Tested POST /api/newsletter with payload {email:'test@example.com'}. Returns 200 with { ok: true, id: <uuid> }. UUID format validated."
+
+frontend:
+  - task: "Full SoilCredit landing page (all sections)"
+    implemented: true
+    working: "NA"
+    file: "app/page.js"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: "Full page renders: Navbar, Hero, Partners, About, HowItWorks, Features, Calculator (wired to POST /api/calculator), Marketplace (wired to GET /api/marketplace), Dashboard, MapSection, Testimonials, FAQ, Contact (wired to POST /api/contact), Footer (wired to POST /api/newsletter). Verified visually."
+
+metadata:
+  created_by: "main_agent"
+  version: "1.0"
+  test_sequence: 1
+  run_ui: false
+
+test_plan:
+  current_focus: []
+  stuck_tasks: []
+  test_all: false
+  test_priority: "high_first"
+
+agent_communication:
+  - agent: "main"
+    message: "Backend API implemented as catch-all Next.js route at /api/[[...path]]. All endpoints prefixed with /api. MongoDB via MONGO_URL env, DB name from DB_NAME (defaults to 'soilcredit'). Please test happy paths + basic validation (missing body -> should still work with defaults or return 500 gracefully). Use uuid ids (not ObjectId)."
+  - agent: "testing"
+    message: "Backend testing completed successfully. All 11 tests passed (health, root, stats, marketplace, calculator with valid/empty input, contact, land, newsletter, stats persistence, 404). No critical issues found. All endpoints return correct status codes, proper data structures, and UUID ids. MongoDB persistence verified. Carbon calculation math is accurate. Ready for production."
