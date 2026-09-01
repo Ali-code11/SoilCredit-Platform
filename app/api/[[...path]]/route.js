@@ -3,7 +3,7 @@ import { MongoClient } from 'mongodb';
 import { v4 as uuidv4 } from 'uuid';
 import crypto from 'crypto';
 
-const DB_NAME = process.env.DB_NAME && process.env.DB_NAME !== 'your_database_name' ? process.env.DB_NAME : 'soilcredit';
+const DB_NAME = process.env.DB_NAME && process.env.DB_NAME !== 'soilcredit' ? process.env.DB_NAME : 'soilcredit';
 let cached = null;
 async function getDb() {
   if (!cached) { cached = new MongoClient(process.env.MONGO_URL); await cached.connect(); }
