@@ -9,8 +9,8 @@ export const metadata = {
     google: "DhuRRBhIM2rtc37SheTfQnsql1vEMrTk8Hsv723mRO0",
   },
   icons: {
-    icon: '/faviconblue.png',
-    shortcut: '/faviconblue.png',
+    icon: '/soilfaviconblue.png',
+    shortcut: '/soilfaviconblue.png',
   },
 };
 
