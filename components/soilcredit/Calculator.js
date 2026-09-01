@@ -29,8 +29,20 @@ export default function Calculator() {
     setLoading(true);
     try {
       const r = await fetch('/api/calculator', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(form) });
-      const d = await r.json(); setResult(d);
-    } catch {} setLoading(false);
+      let d;
+      try { d = await r.json(); } catch (e) { d = { ok: false, error: 'Invalid JSON response' }; console.error('Calculator: invalid JSON', e); }
+      if (!r.ok) {
+        console.error('Calculator API error', r.status, d);
+        setResult({ ok: false, error: d && d.error ? d.error : `HTTP ${r.status}` });
+      } else {
+        setResult(d);
+      }
+    } catch (e) {
+      console.error('Calculator fetch error', e);
+      setResult({ ok: false, error: e.message });
+    } finally {
+      setLoading(false);
+    }
   };
 
   const soilOpts = Object.entries(t('calc.soils') || {});
