@@ -4,7 +4,17 @@ import { Providers } from '@/lib/providers';
 export const metadata = {
   title: 'SoilCredit — Turn Your Land Into Carbon Credits',
   description: 'SoilCredit uses AI and satellite imagery to certify unused lands in Azerbaijan and sell carbon credits to ESG companies.',
+
+   verification: {
+    google: "DhuRRBhIM2rtc37SheTfQnsql1vEMrTk8Hsv723mRO0",
+  },
+  icons: {
+    icon: '/soilcreditfavicon.png',
+    shortcut: '/soilcreditfavicon.png',
+  },
 };
+
+
 
 export default function RootLayout({ children }) {
   return (
