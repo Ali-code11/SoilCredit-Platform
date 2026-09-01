@@ -56,8 +56,8 @@ function estimate({ area, soil, region, forestType, vegetation }) {
 
 /* ---------- auth helpers ---------- */
 async function currentUser(req) {
-  const auth = req.headers.get('authorization') || '';
-  const token = auth.startsWith('Bearer ') ? auth.slice(7) : null;
+  const auth = getAuthHeader(req);
+  const token = (typeof auth === 'string' && auth.startsWith('Bearer ')) ? auth.slice(7) : null;
   if (!token) return null;
   const db = await getDb();
   const session = await db.collection('sessions').findOne({ token });
@@ -70,6 +70,20 @@ async function currentUser(req) {
 async function json(req) { try { return await req.json(); } catch { return {}; } }
 function ok(data) { return NextResponse.json({ ok: true, ...data }); }
 function err(msg, code=400) { return NextResponse.json({ ok: false, error: msg }, { status: code }); }
+
+function getAuthHeader(req) {
+  if (!req) return '';
+  try {
+    if (req.headers) {
+      if (typeof req.headers.get === 'function') return req.headers.get('authorization') || '';
+      // Node's IncomingMessage headers may be a plain object
+      if (typeof req.headers === 'object') return req.headers.authorization || req.headers.Authorization || req.headers['authorization'] || '';
+    }
+    return '';
+  } catch (e) {
+    return '';
+  }
+}
 
 /* ---------- router ---------- */
 async function handle(req, params) {
@@ -152,8 +166,8 @@ async function handle(req, params) {
     }
 
     if (route === 'auth/logout' && method === 'POST') {
-      const auth = req.headers.get('authorization') || '';
-      const token = auth.startsWith('Bearer ') ? auth.slice(7) : null;
+      const auth = getAuthHeader(req);
+      const token = (typeof auth === 'string' && auth.startsWith('Bearer ')) ? auth.slice(7) : null;
       if (token) { const db = await getDb(); await db.collection('sessions').deleteOne({ token }); }
       return ok({});
     }
