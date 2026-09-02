@@ -4,10 +4,13 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Leaf, Menu, X, Globe, LogOut, LayoutDashboard, ChevronDown } from 'lucide-react';
 import { useLang, useAuth } from '@/lib/providers';
 import Link from 'next/link';
+import { useRouter, usePathname } from 'next/navigation';
 
 export default function Navbar({ onOpenAuth }) {
   const { lang, setLang, t } = useLang();
   const { user, logout } = useAuth();
+  const router = useRouter();
+  const pathname = usePathname();
   const [scrolled, setScrolled] = useState(false);
   const [open, setOpen] = useState(false);
   const [menu, setMenu] = useState(false);
@@ -19,6 +22,19 @@ export default function Navbar({ onOpenAuth }) {
     return () => window.removeEventListener('scroll', onScroll);
   }, []);
 
+  const handleNavClick = (hash) => {
+    if (pathname === '/') {
+      // If already on home page, just scroll to section
+      const element = document.querySelector(hash);
+      if (element) {
+        element.scrollIntoView({ behavior: 'smooth' });
+      }
+    } else {
+      // Navigate to home with hash, scroll will happen after page loads
+      router.push('/' + hash);
+    }
+  };
+
   const links = [
     { label: t('nav.home'), href: '#home' },
     { label: t('nav.why'), href: '#why' },
@@ -26,6 +42,7 @@ export default function Navbar({ onOpenAuth }) {
     { label: t('nav.calc'), href: '#calculator' },
     { label: t('nav.market'), href: '#marketplace' },
     { label: t('nav.faq'), href: '#faq' },
+    { label: t('nav.contact') || 'Contact', href: '#footer' },
   ];
 
   return (
@@ -42,7 +59,7 @@ export default function Navbar({ onOpenAuth }) {
 
             <nav className="hidden lg:flex items-center gap-1">
               {links.map((l) => (
-                <a key={l.label} href={l.href} className="px-3 py-2 text-[14px] font-medium text-slate-600 hover:text-blue-600 transition">{l.label}</a>
+                <button key={l.label} onClick={() => handleNavClick(l.href)} className="px-3 py-2 text-[14px] font-medium text-slate-600 hover:text-blue-600 transition">{l.label}</button>
               ))}
             </nav>
 
@@ -103,7 +120,7 @@ export default function Navbar({ onOpenAuth }) {
               </div>
               <div className="flex flex-col gap-1">
                 {links.map((l) => (
-                  <a key={l.label} href={l.href} onClick={() => setOpen(false)} className="px-4 py-3 rounded-xl hover:bg-slate-50 text-slate-700">{l.label}</a>
+                  <button key={l.label} onClick={() => { setOpen(false); handleNavClick(l.href); }} className="px-4 py-3 rounded-xl hover:bg-slate-50 text-slate-700 text-left">{l.label}</button>
                 ))}
                 <div className="flex items-center gap-2 px-4 py-3"><span className="text-[12px] text-slate-500">Language:</span>
                   <button onClick={() => setLang('en')} className={`text-[12px] font-semibold px-2 py-1 rounded ${lang==='en' ? 'bg-blue-50 text-blue-600' : 'text-slate-500'}`}>EN</button>

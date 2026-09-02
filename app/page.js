@@ -1,5 +1,5 @@
 'use client';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Navbar from '@/components/soilcredit/Navbar';
 import AuthModal from '@/components/soilcredit/AuthModal';
 import Hero from '@/components/soilcredit/Hero';
@@ -15,6 +15,19 @@ function App() {
   const [auth, setAuth] = useState({ open: false, mode: 'signup' });
   const openAuth = (mode = 'signup') => setAuth({ open: true, mode });
   const closeAuth = () => setAuth({ open: false, mode: auth.mode });
+
+  // Scroll to section if hash is in URL
+  useEffect(() => {
+    const hash = window.location.hash;
+    if (hash) {
+      setTimeout(() => {
+        const element = document.querySelector(hash);
+        if (element) {
+          element.scrollIntoView({ behavior: 'smooth' });
+        }
+      }, 100);
+    }
+  }, []);
 
   return (
     <main className="relative bg-white text-slate-900">

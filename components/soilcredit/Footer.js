@@ -12,7 +12,7 @@ export default function Footer() {
     try { await fetch('/api/newsletter', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email }) }); setOk(true); setEmail(''); setTimeout(() => setOk(false), 4000); } catch {}
   };
   return (
-    <footer className="relative bg-white border-t border-slate-200 pt-16 pb-8">
+    <footer id="footer" className="relative bg-white border-t border-slate-200 pt-16 pb-8">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.5 }}
           className="rounded-3xl bg-gradient-to-br from-blue-50 via-white to-emerald-50 border border-slate-200 p-7 md:p-9 mb-14 flex flex-col md:flex-row items-start md:items-center justify-between gap-5">
