@@ -40,7 +40,9 @@ async function sendEmail({ to, subject, html }) {
   return true;
 }
 function appUrl(req) {
-  return process.env.APP_URL || new URL(req.url).origin;
+  const configuredUrl = process.env.APP_URL?.trim();
+  if (!configuredUrl) return new URL(req.url).origin;
+  return /^https?:\/\//i.test(configuredUrl) ? configuredUrl.replace(/\/$/, '') : `https://${configuredUrl.replace(/\/$/, '')}`;
 }
 
 /* ---------- carbon estimation ---------- */
