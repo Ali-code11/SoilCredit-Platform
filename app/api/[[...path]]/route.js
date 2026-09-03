@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { MongoClient } from 'mongodb';
 import { v4 as uuidv4 } from 'uuid';
+import { Resend } from 'resend';
 import crypto from 'crypto';
 
 const DB_NAME = process.env.DB_NAME && process.env.DB_NAME !== 'soilcredit' ? process.env.DB_NAME : 'soilcredit';
@@ -19,6 +20,27 @@ function hashPassword(pw, salt) {
 function verifyPassword(pw, salt, hash) {
   const { hash: h2 } = hashPassword(pw, salt);
   return crypto.timingSafeEqual(Buffer.from(hash, 'hex'), Buffer.from(h2, 'hex'));
+}
+function createToken() {
+  return crypto.randomBytes(32).toString('hex');
+}
+function hashToken(token) {
+  return crypto.createHash('sha256').update(token).digest('hex');
+}
+async function sendEmail({ to, subject, html }) {
+  if (!process.env.RESEND_API_KEY) return false;
+  const resend = new Resend(process.env.RESEND_API_KEY);
+  const { error } = await resend.emails.send({
+    from: process.env.EMAIL_FROM || 'SoilCredit <onboarding@resend.dev>',
+    to,
+    subject,
+    html,
+  });
+  if (error) throw new Error(error.message || 'Email could not be sent');
+  return true;
+}
+function appUrl(req) {
+  return process.env.APP_URL || new URL(req.url).origin;
 }
 
 /* ---------- carbon estimation ---------- */
@@ -138,12 +160,23 @@ async function handle(req, params) {
       const exists = await db.collection('users').findOne({ email });
       if (exists) return err('Email already registered');
       const { salt, hash } = hashPassword(password);
-      const user = { id: uuidv4(), email, name, role, company: role === 'company' ? company : null, salt, hash, createdAt: new Date().toISOString() };
+      const verificationToken = createToken();
+      const user = {
+        id: uuidv4(), email, name, role, company: role === 'company' ? company : null,
+        salt, hash, emailVerified: false,
+        emailVerificationToken: hashToken(verificationToken),
+        emailVerificationExpiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
+        createdAt: new Date().toISOString(),
+      };
       await db.collection('users').insertOne(user);
-      const token = uuidv4();
-      await db.collection('sessions').insertOne({ token, userId: user.id, createdAt: new Date().toISOString() });
-      const { hash: _h, salt: _s, _id, ...pub } = user;
-      return ok({ token, user: pub });
+      const { hash: _h, salt: _s, emailVerificationToken: _vt, emailVerificationExpiresAt: _ve, _id, ...pub } = user;
+      const verificationUrl = `${appUrl(req)}/api/auth/verify-email?token=${verificationToken}`;
+      const emailSent = await sendEmail({
+        to: email,
+        subject: 'Verify your SoilCredit email',
+        html: `<p>Hello ${name},</p><p>Verify your SoilCredit email by clicking the link below:</p><p><a href="${verificationUrl}">Verify email</a></p><p>This link expires in 24 hours.</p>`,
+      });
+      return ok({ user: pub, ...(emailSent ? { emailSent: true } : { verificationUrl, emailSent: false }) });
     }
 
     if (route === 'auth/login' && method === 'POST') {
@@ -154,10 +187,55 @@ async function handle(req, params) {
       const u = await db.collection('users').findOne({ email });
       if (!u) return err('Invalid credentials', 401);
       if (!verifyPassword(password, u.salt, u.hash)) return err('Invalid credentials', 401);
+      if (u.emailVerified === false) return err('Please verify your email before signing in', 403);
       const token = uuidv4();
       await db.collection('sessions').insertOne({ token, userId: u.id, createdAt: new Date().toISOString() });
       const { hash: _h, salt: _s, _id, ...pub } = u;
       return ok({ token, user: pub });
+    }
+
+    if (route === 'auth/verify-email' && (method === 'POST' || method === 'GET')) {
+      const body = method === 'POST' ? await json(req) : {};
+      const token = String(body.token || new URL(req.url).searchParams.get('token') || '');
+      if (!token) return err('Verification token is required');
+      const db = await getDb();
+      const user = await db.collection('users').findOne({ emailVerificationToken: hashToken(token) });
+      if (!user || !user.emailVerificationExpiresAt || new Date(user.emailVerificationExpiresAt) < new Date()) return err('Verification link is invalid or expired', 400);
+      await db.collection('users').updateOne({ id: user.id }, { $set: { emailVerified: true }, $unset: { emailVerificationToken: '', emailVerificationExpiresAt: '' } });
+      return ok({ message: 'Email verified successfully' });
+    }
+
+    if (route === 'auth/forgot-password' && method === 'POST') {
+      const b = await json(req);
+      const email = String(b.email || '').toLowerCase().trim();
+      if (!email) return err('Email is required');
+      const db = await getDb();
+      const user = await db.collection('users').findOne({ email });
+      if (!user) return ok({ message: 'If the email exists, a reset link has been created' });
+      const resetToken = createToken();
+      await db.collection('users').updateOne({ id: user.id }, { $set: { passwordResetToken: hashToken(resetToken), passwordResetExpiresAt: new Date(Date.now() + 60 * 60 * 1000).toISOString() } });
+      const resetUrl = `${appUrl(req)}/?resetToken=${resetToken}`;
+      const emailSent = await sendEmail({
+        to: email,
+        subject: 'Reset your SoilCredit password',
+        html: `<p>We received a request to reset your SoilCredit password.</p><p><a href="${resetUrl}">Reset password</a></p><p>This link expires in 1 hour.</p>`,
+      });
+      return ok({ message: 'If the email exists, a reset link has been created', ...(emailSent ? { emailSent: true } : { resetUrl, emailSent: false }) });
+    }
+
+    if (route === 'auth/reset-password' && method === 'POST') {
+      const b = await json(req);
+      const token = String(b.token || '');
+      const password = String(b.password || '');
+      if (!token || !password) return err('Token and password are required');
+      if (password.length < 6) return err('Password too short');
+      const db = await getDb();
+      const user = await db.collection('users').findOne({ passwordResetToken: hashToken(token) });
+      if (!user || !user.passwordResetExpiresAt || new Date(user.passwordResetExpiresAt) < new Date()) return err('Reset link is invalid or expired', 400);
+      const { salt, hash } = hashPassword(password);
+      await db.collection('users').updateOne({ id: user.id }, { $set: { salt, hash }, $unset: { passwordResetToken: '', passwordResetExpiresAt: '' } });
+      await db.collection('sessions').deleteMany({ userId: user.id });
+      return ok({ message: 'Password reset successfully' });
     }
 
     if (route === 'auth/me' && method === 'GET') {

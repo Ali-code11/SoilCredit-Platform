@@ -18,6 +18,8 @@ function App() {
 
   // Scroll to section if hash is in URL
   useEffect(() => {
+    const resetToken = new URLSearchParams(window.location.search).get('resetToken');
+    if (resetToken) setAuth({ open: true, mode: 'reset' });
     const hash = window.location.hash;
     if (hash) {
       setTimeout(() => {
