@@ -21,7 +21,9 @@ function App() {
     const hash = window.location.hash;
     if (hash) {
       setTimeout(() => {
-        const element = document.querySelector(hash);
+        let targetId = hash.slice(1);
+        try { targetId = decodeURIComponent(targetId); } catch {}
+        const element = document.getElementById(targetId);
         if (element) {
           element.scrollIntoView({ behavior: 'smooth' });
         }

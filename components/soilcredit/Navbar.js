@@ -25,7 +25,7 @@ export default function Navbar({ onOpenAuth }) {
   const handleNavClick = (hash) => {
     if (pathname === '/') {
       // If already on home page, just scroll to section
-      const element = document.querySelector(hash);
+      const element = document.getElementById(hash.slice(1));
       if (element) {
         element.scrollIntoView({ behavior: 'smooth' });
       }
