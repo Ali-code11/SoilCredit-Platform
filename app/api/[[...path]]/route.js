@@ -28,7 +28,7 @@ function hashToken(token) {
   return crypto.createHash('sha256').update(token).digest('hex');
 }
 async function sendEmail({ to, subject, html }) {
-  if (!process.env.RESEND_API_KEY) return false;
+  if (!process.env.RESEND_API_KEY) throw new Error('Email service is not configured. Set RESEND_API_KEY and restart the server.');
   const resend = new Resend(process.env.RESEND_API_KEY);
   const { error } = await resend.emails.send({
     from: process.env.EMAIL_FROM || 'SoilCredit <onboarding@resend.dev>',
@@ -170,15 +170,15 @@ async function handle(req, params) {
         emailVerificationExpiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
         createdAt: new Date().toISOString(),
       };
-      await db.collection('users').insertOne(user);
-      const { hash: _h, salt: _s, emailVerificationToken: _vt, emailVerificationExpiresAt: _ve, _id, ...pub } = user;
       const verificationUrl = `${appUrl(req)}/api/auth/verify-email?token=${verificationToken}`;
-      const emailSent = await sendEmail({
+      await sendEmail({
         to: email,
         subject: 'Verify your SoilCredit email',
         html: `<p>Hello ${name},</p><p>Verify your SoilCredit email by clicking the link below:</p><p><a href="${verificationUrl}">Verify email</a></p><p>This link expires in 24 hours.</p>`,
       });
-      return ok({ user: pub, ...(emailSent ? { emailSent: true } : { verificationUrl, emailSent: false }) });
+      await db.collection('users').insertOne(user);
+      const { hash: _h, salt: _s, emailVerificationToken: _vt, emailVerificationExpiresAt: _ve, _id, ...pub } = user;
+      return ok({ user: pub, emailSent: true });
     }
 
     if (route === 'auth/login' && method === 'POST') {
@@ -217,12 +217,12 @@ async function handle(req, params) {
       const resetToken = createToken();
       await db.collection('users').updateOne({ id: user.id }, { $set: { passwordResetToken: hashToken(resetToken), passwordResetExpiresAt: new Date(Date.now() + 60 * 60 * 1000).toISOString() } });
       const resetUrl = `${appUrl(req)}/?resetToken=${resetToken}`;
-      const emailSent = await sendEmail({
+      await sendEmail({
         to: email,
         subject: 'Reset your SoilCredit password',
         html: `<p>We received a request to reset your SoilCredit password.</p><p><a href="${resetUrl}">Reset password</a></p><p>This link expires in 1 hour.</p>`,
       });
-      return ok({ message: 'If the email exists, a reset link has been created', ...(emailSent ? { emailSent: true } : { resetUrl, emailSent: false }) });
+      return ok({ message: 'If the email exists, a reset link has been sent', emailSent: true });
     }
 
     if (route === 'auth/reset-password' && method === 'POST') {
