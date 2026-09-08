@@ -53,7 +53,7 @@ async function sendEmail({ to, subject, html }) {
 }
 function appUrl(req) {
   const configuredUrl = (process.env.NEXT_PUBLIC_APP_URL || process.env.APP_URL)?.trim();
-  if (!configuredUrl) return new URL(req.url).origin;
+  if (!configuredUrl) return process.env.NODE_ENV === 'production' ? 'https://soilcredit.net' : new URL(req.url).origin;
   return /^https?:\/\//i.test(configuredUrl) ? configuredUrl.replace(/\/$/, '') : `https://${configuredUrl.replace(/\/$/, '')}`;
 }
 
