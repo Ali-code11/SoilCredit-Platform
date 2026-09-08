@@ -9,7 +9,7 @@ export default function AuthModal({ open, mode, onClose }) {
   const { login } = useAuth();
   const [tab, setTab] = useState(mode || 'signup');
   const [role, setRole] = useState('landowner');
-  const [form, setForm] = useState({ name: '', email: '', password: '', company: '' });
+  const [form, setForm] = useState({ name: '', email: '', password: '', confirmPassword: '', company: '' });
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -30,7 +30,7 @@ export default function AuthModal({ open, mode, onClose }) {
       if (tab === 'forgot') {
         const r = await fetch('/api/auth/forgot-password', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email: form.email }) });
         const d = await r.json();
-        if (!d.ok) setErr(d.error || 'Reset request failed'); else { setNotice(`${d.message}${d.resetUrl ? `: ${d.resetUrl}` : ''}`); setTab('reset'); }
+        if (!d.ok) setErr(d.error || 'Reset request failed'); else setNotice(d.message);
       } else if (tab === 'reset') {
         const r = await fetch('/api/auth/reset-password', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ token: resetToken, password: form.password }) });
         const d = await r.json();
@@ -38,11 +38,14 @@ export default function AuthModal({ open, mode, onClose }) {
       } else if (tab === 'signup') {
         const r = await fetch('/api/auth/signup', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ...form, role }) });
         const d = await r.json();
-        if (!d.ok) setErr(d.error || 'Signup failed'); else { setNotice(`${t('auth.verifyEmail')}${d.verificationUrl ? `: ${d.verificationUrl}` : ''}`); setTab('login'); }
+        if (!d.ok) setErr(d.error || 'Signup failed'); else window.location.href = `/verify-email?email=${encodeURIComponent(form.email)}`;
       } else {
         const r = await fetch('/api/auth/login', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email: form.email, password: form.password }) });
         const d = await r.json();
-        if (!d.ok) setErr(d.error || 'Login failed'); else { login(d.token, d.user); onClose?.(); window.location.href = '/dashboard'; }
+        if (!d.ok) {
+          if (d.code === 'EMAIL_NOT_VERIFIED') window.location.href = `/verify-email?email=${encodeURIComponent(d.email || form.email)}`;
+          else setErr(d.error || 'Login failed');
+        } else { login(d.token, d.user); onClose?.(); window.location.href = '/dashboard'; }
       }
     } catch { setErr('Network error'); }
     setLoading(false);
@@ -103,6 +106,10 @@ export default function AuthModal({ open, mode, onClose }) {
               {(tab === 'login' || tab === 'signup' || tab === 'reset') && <div>
                 <label className="text-[12.5px] font-medium text-slate-600 mb-1 block">{t('auth.password')}</label>
                 <div className="relative"><input type={showPassword ? 'text' : 'password'} value={form.password} onChange={(e) => set('password', e.target.value)} required minLength={6} className="field pr-10" placeholder="••••••••" /><button type="button" aria-label={showPassword ? t('auth.hidePassword') : t('auth.showPassword')} onClick={() => setShowPassword((value) => !value)} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-700">{showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}</button></div>
+              </div>}
+              {tab === 'signup' && <div>
+                <label className="text-[12.5px] font-medium text-slate-600 mb-1 block">Confirm password</label>
+                <input type={showPassword ? 'text' : 'password'} value={form.confirmPassword} onChange={(e) => set('confirmPassword', e.target.value)} required minLength={8} className="field" placeholder="••••••••" />
               </div>}
 
               {tab === 'reset' && <div><label className="text-[12.5px] font-medium text-slate-600 mb-1 block">{t('auth.resetToken')}</label><input value={resetToken} onChange={(e) => setResetToken(e.target.value)} required className="field" placeholder="reset token" /></div>}

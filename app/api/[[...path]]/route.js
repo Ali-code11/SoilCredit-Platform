@@ -24,14 +24,26 @@ function verifyPassword(pw, salt, hash) {
 function createToken() {
   return crypto.randomBytes(32).toString('hex');
 }
+function createVerificationCode() {
+  return String(crypto.randomInt(0, 1000000)).padStart(6, '0');
+}
 function hashToken(token) {
   return crypto.createHash('sha256').update(token).digest('hex');
+}
+function isValidEmail(email) {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+}
+function sameHash(left, right) {
+  if (!left || !right) return false;
+  const a = Buffer.from(left, 'hex');
+  const b = Buffer.from(right, 'hex');
+  return a.length === b.length && crypto.timingSafeEqual(a, b);
 }
 async function sendEmail({ to, subject, html }) {
   if (!process.env.RESEND_API_KEY) throw new Error('Email service is not configured. Set RESEND_API_KEY and restart the server.');
   const resend = new Resend(process.env.RESEND_API_KEY);
   const { error } = await resend.emails.send({
-    from: process.env.EMAIL_FROM || 'SoilCredit <onboarding@resend.dev>',
+    from: process.env.EMAIL_FROM || 'SoilCredit <no-reply@soilcredit.net>',
     to,
     subject,
     html,
@@ -40,7 +52,7 @@ async function sendEmail({ to, subject, html }) {
   return true;
 }
 function appUrl(req) {
-  const configuredUrl = process.env.APP_URL?.trim();
+  const configuredUrl = (process.env.NEXT_PUBLIC_APP_URL || process.env.APP_URL)?.trim();
   if (!configuredUrl) return new URL(req.url).origin;
   return /^https?:\/\//i.test(configuredUrl) ? configuredUrl.replace(/\/$/, '') : `https://${configuredUrl.replace(/\/$/, '')}`;
 }
@@ -153,31 +165,35 @@ async function handle(req, params) {
       const b = await json(req);
       const email = String(b.email || '').toLowerCase().trim();
       const password = String(b.password || '');
+      const confirmPassword = String(b.confirmPassword || '');
       const name = String(b.name || '').trim();
       const role = ['landowner', 'company'].includes(b.role) ? b.role : 'landowner';
       const company = String(b.company || '').trim();
       if (!email || !password || !name) return err('Missing fields');
-      if (password.length < 6) return err('Password too short');
+      if (!isValidEmail(email)) return err('Invalid email address');
+      if (password.length < 8) return err('Password must be at least 8 characters');
+      if (password !== confirmPassword) return err('Passwords do not match');
       const db = await getDb();
       const exists = await db.collection('users').findOne({ email });
       if (exists) return err('Email already registered');
       const { salt, hash } = hashPassword(password);
-      const verificationToken = createToken();
+      const verificationCode = createVerificationCode();
       const user = {
         id: uuidv4(), email, name, role, company: role === 'company' ? company : null,
         salt, hash, emailVerified: false,
-        emailVerificationToken: hashToken(verificationToken),
-        emailVerificationExpiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
+        emailVerificationCodeHash: hashToken(verificationCode),
+        emailVerificationExpiresAt: new Date(Date.now() + 10 * 60 * 1000).toISOString(),
+        emailVerificationLastSentAt: new Date().toISOString(),
+        emailVerificationAttempts: 0,
         createdAt: new Date().toISOString(),
       };
-      const verificationUrl = `${appUrl(req)}/api/auth/verify-email?token=${verificationToken}`;
       await sendEmail({
         to: email,
-        subject: 'Verify your SoilCredit email',
-        html: `<p>Hello ${name},</p><p>Verify your SoilCredit email by clicking the link below:</p><p><a href="${verificationUrl}">Verify email</a></p><p>This link expires in 24 hours.</p>`,
+        subject: 'SoilCredit account verification',
+        html: `<div style="font-family:Arial,sans-serif;max-width:560px;margin:auto;color:#0f172a"><h2 style="color:#2563eb">SoilCredit account verification</h2><p>Hello ${name},</p><p>Your verification code is:</p><p style="font-size:32px;font-weight:700;letter-spacing:8px;color:#059669">${verificationCode}</p><p>Enter this 6-digit code in SoilCredit to verify your email address.</p><p style="color:#64748b">This code expires in 10 minutes. If you did not create this account, you can ignore this email.</p></div>`,
       });
       await db.collection('users').insertOne(user);
-      const { hash: _h, salt: _s, emailVerificationToken: _vt, emailVerificationExpiresAt: _ve, _id, ...pub } = user;
+      const { hash: _h, salt: _s, emailVerificationCodeHash: _vc, emailVerificationExpiresAt: _ve, emailVerificationLastSentAt: _vs, emailVerificationAttempts: _va, _id, ...pub } = user;
       return ok({ user: pub, emailSent: true });
     }
 
@@ -189,7 +205,7 @@ async function handle(req, params) {
       const u = await db.collection('users').findOne({ email });
       if (!u) return err('Invalid credentials', 401);
       if (!verifyPassword(password, u.salt, u.hash)) return err('Invalid credentials', 401);
-      if (u.emailVerified === false) return err('Please verify your email before signing in', 403);
+      if (u.emailVerified === false) return NextResponse.json({ ok: false, error: 'Please verify your email before signing in', code: 'EMAIL_NOT_VERIFIED', email: u.email }, { status: 403 });
       const token = uuidv4();
       await db.collection('sessions').insertOne({ token, userId: u.id, createdAt: new Date().toISOString() });
       const { hash: _h, salt: _s, _id, ...pub } = u;
@@ -198,13 +214,45 @@ async function handle(req, params) {
 
     if (route === 'auth/verify-email' && (method === 'POST' || method === 'GET')) {
       const body = method === 'POST' ? await json(req) : {};
-      const token = String(body.token || new URL(req.url).searchParams.get('token') || '');
-      if (!token) return err('Verification token is required');
+      const query = new URL(req.url).searchParams;
+      const email = String(body.email || query.get('email') || '').toLowerCase().trim();
+      const code = String(body.code || '').trim();
+      const legacyToken = String(body.token || query.get('token') || '');
+      if (!email && !legacyToken) return err('Email is required');
       const db = await getDb();
-      const user = await db.collection('users').findOne({ emailVerificationToken: hashToken(token) });
-      if (!user || !user.emailVerificationExpiresAt || new Date(user.emailVerificationExpiresAt) < new Date()) return err('Verification link is invalid or expired', 400);
-      await db.collection('users').updateOne({ id: user.id }, { $set: { emailVerified: true }, $unset: { emailVerificationToken: '', emailVerificationExpiresAt: '' } });
+      const user = legacyToken
+        ? await db.collection('users').findOne({ emailVerificationToken: hashToken(legacyToken) })
+        : await db.collection('users').findOne({ email });
+      if (!user || user.emailVerified) return err('Invalid or expired verification code', 400);
+      if (user.emailVerificationAttempts >= 5) return err('Too many incorrect attempts. Request a new code.', 429);
+      const validLegacyToken = legacyToken && sameHash(user.emailVerificationToken, hashToken(legacyToken));
+      const validCode = code.length === 6 && /^\d{6}$/.test(code) && sameHash(user.emailVerificationCodeHash, hashToken(code));
+      if (!validLegacyToken && !validCode) {
+        await db.collection('users').updateOne({ id: user.id }, { $inc: { emailVerificationAttempts: 1 } });
+        return err('Invalid or expired verification code', 400);
+      }
+      if (!user.emailVerificationExpiresAt || new Date(user.emailVerificationExpiresAt) < new Date()) return err('Invalid or expired verification code', 400);
+      await db.collection('users').updateOne({ id: user.id }, { $set: { emailVerified: true }, $unset: { emailVerificationCodeHash: '', emailVerificationToken: '', emailVerificationExpiresAt: '', emailVerificationLastSentAt: '', emailVerificationAttempts: '' } });
       return ok({ message: 'Email verified successfully' });
+    }
+
+    if (route === 'auth/resend-verification' && method === 'POST') {
+      const b = await json(req);
+      const email = String(b.email || '').toLowerCase().trim();
+      if (!isValidEmail(email)) return ok({ message: 'If an account requires verification, a new code has been sent.' });
+      const db = await getDb();
+      const user = await db.collection('users').findOne({ email });
+      if (!user || user.emailVerified) return ok({ message: 'If an account requires verification, a new code has been sent.' });
+      const lastSent = user.emailVerificationLastSentAt ? new Date(user.emailVerificationLastSentAt).getTime() : 0;
+      if (Date.now() - lastSent < 60 * 1000) return err('Please wait before requesting another code.', 429);
+      const code = createVerificationCode();
+      await db.collection('users').updateOne({ id: user.id }, { $set: { emailVerificationCodeHash: hashToken(code), emailVerificationExpiresAt: new Date(Date.now() + 10 * 60 * 1000).toISOString(), emailVerificationLastSentAt: new Date().toISOString(), emailVerificationAttempts: 0 }, $unset: { emailVerificationToken: '' } });
+      await sendEmail({
+        to: email,
+        subject: 'Your new SoilCredit verification code',
+        html: `<div style="font-family:Arial,sans-serif;max-width:560px;margin:auto;color:#0f172a"><h2 style="color:#2563eb">SoilCredit account verification</h2><p>Your new verification code is:</p><p style="font-size:32px;font-weight:700;letter-spacing:8px;color:#059669">${code}</p><p>Enter this 6-digit code in SoilCredit. It expires in 10 minutes.</p></div>`,
+      });
+      return ok({ message: 'If an account requires verification, a new code has been sent.' });
     }
 
     if (route === 'auth/forgot-password' && method === 'POST') {
@@ -213,16 +261,18 @@ async function handle(req, params) {
       if (!email) return err('Email is required');
       const db = await getDb();
       const user = await db.collection('users').findOne({ email });
-      if (!user) return ok({ message: 'If the email exists, a reset link has been created' });
+      if (!user) return ok({ message: "If an account exists for this email, we've sent a password reset link." });
       const resetToken = createToken();
-      await db.collection('users').updateOne({ id: user.id }, { $set: { passwordResetToken: hashToken(resetToken), passwordResetExpiresAt: new Date(Date.now() + 60 * 60 * 1000).toISOString() } });
-      const resetUrl = `${appUrl(req)}/?resetToken=${resetToken}`;
+      const lastResetSent = user.passwordResetLastSentAt ? new Date(user.passwordResetLastSentAt).getTime() : 0;
+      if (Date.now() - lastResetSent < 60 * 1000) return ok({ message: "If an account exists for this email, we've sent a password reset link." });
+      await db.collection('users').updateOne({ id: user.id }, { $set: { passwordResetToken: hashToken(resetToken), passwordResetExpiresAt: new Date(Date.now() + 30 * 60 * 1000).toISOString(), passwordResetLastSentAt: new Date().toISOString() } });
+      const resetUrl = `${appUrl(req)}/reset-password?token=${encodeURIComponent(resetToken)}`;
       await sendEmail({
         to: email,
         subject: 'Reset your SoilCredit password',
-        html: `<p>We received a request to reset your SoilCredit password.</p><p><a href="${resetUrl}">Reset password</a></p><p>This link expires in 1 hour.</p>`,
+        html: `<div style="font-family:Arial,sans-serif;max-width:560px;margin:auto;color:#0f172a"><h2 style="color:#2563eb">Reset your SoilCredit password</h2><p>We received a request to reset your password.</p><p><a href="${resetUrl}" style="display:inline-block;background:#2563eb;color:#fff;padding:12px 20px;border-radius:8px;text-decoration:none">Reset password</a></p><p style="color:#64748b">This link expires in 30 minutes and can only be used once. If you did not request this, you can ignore this email.</p></div>`,
       });
-      return ok({ message: 'If the email exists, a reset link has been sent', emailSent: true });
+      return ok({ message: "If an account exists for this email, we've sent a password reset link." });
     }
 
     if (route === 'auth/reset-password' && method === 'POST') {
@@ -230,7 +280,7 @@ async function handle(req, params) {
       const token = String(b.token || '');
       const password = String(b.password || '');
       if (!token || !password) return err('Token and password are required');
-      if (password.length < 6) return err('Password too short');
+      if (password.length < 8) return err('Password must be at least 8 characters');
       const db = await getDb();
       const user = await db.collection('users').findOne({ passwordResetToken: hashToken(token) });
       if (!user || !user.passwordResetExpiresAt || new Date(user.passwordResetExpiresAt) < new Date()) return err('Reset link is invalid or expired', 400);
@@ -373,10 +423,10 @@ async function handle(req, params) {
       return ok({ purchases });
     }
 
-    return err('Not found: ' + route, 404);
+    return err('Not found', 404);
   } catch (e) {
-    console.error('API error:', e);
-    return NextResponse.json({ ok: false, error: e.message }, { status: 500 });
+    console.error('API error:', { route, method, message: e.message });
+    return NextResponse.json({ ok: false, error: 'An unexpected server error occurred.' }, { status: 500 });
   }
 }
 
