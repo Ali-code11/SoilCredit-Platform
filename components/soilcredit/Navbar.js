@@ -6,7 +6,7 @@ import { useLang, useAuth } from '@/lib/providers';
 import Link from 'next/link';
 import { useRouter, usePathname } from 'next/navigation';
 
-export default function Navbar({ onOpenAuth }) {
+export default function Navbar({ onOpenAuth, onOpenTeam }) {
   const { lang, setLang, t } = useLang();
   const { user, logout } = useAuth();
   const router = useRouter();
@@ -23,6 +23,11 @@ export default function Navbar({ onOpenAuth }) {
   }, []);
 
   const handleNavClick = (hash) => {
+    if (hash === '#team') {
+      if (pathname === '/') onOpenTeam?.();
+      else router.push('/#team');
+      return;
+    }
     if (pathname === '/') {
       // If already on home page, just scroll to section
       const element = document.getElementById(hash.slice(1));
@@ -41,6 +46,7 @@ export default function Navbar({ onOpenAuth }) {
     { label: t('nav.how'), href: '#how' },
     { label: t('nav.calc'), href: '#calculator' },
     { label: t('nav.market'), href: '#marketplace' },
+    { label: 'Our Team', href: '#team' },
     { label: t('nav.faq'), href: '#faq' },
     { label: t('nav.contact') || 'Contact', href: '#footer' },
   ];
