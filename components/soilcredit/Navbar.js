@@ -46,7 +46,7 @@ export default function Navbar({ onOpenAuth, onOpenTeam }) {
     { label: t('nav.how'), href: '#how' },
     { label: t('nav.calc'), href: '#calculator' },
     { label: t('nav.market'), href: '#marketplace' },
-    { label: 'Our Team', href: '#team' },
+    { label: t('team.nav'), href: '#team' },
     { label: t('nav.faq'), href: '#faq' },
     { label: t('nav.contact') || 'Contact', href: '#footer' },
   ];
