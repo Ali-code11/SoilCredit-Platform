@@ -1,13 +1,123 @@
 'use client';
-import { useEffect, useState } from 'react';
+import dynamic from 'next/dynamic';
+import { useEffect, useMemo, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Plus, Edit3, Trash2, X, Loader2, MapPin, Leaf, Coins, TrendingUp, Store, CheckCircle2 } from 'lucide-react';
+import { Plus, Edit3, Trash2, X, Loader2, MapPin, Leaf, Coins, TrendingUp, Store, CheckCircle2, UploadCloud } from 'lucide-react';
 import { useAuth, useLang } from '@/lib/providers';
+
+const MAX_LAND_IMAGES = 3;
 
 const SOIL = ['loamy','sandy','clay','peat','silty'];
 const REGION = ['caspian','temperate','tropical','arid','mediterranean','boreal'];
 const FOREST = ['primary','secondary','plantation','agroforestry','grassland','wetland'];
 const VEG = ['moderate','sparse','dense','veryDense'];
+const COUNTRY_CITY_FOCUS = {
+  Azerbaijan: { Baku: { lat: 40.4093, lng: 49.8671 }, Ganja: { lat: 40.6827, lng: 46.3606 }, Shaki: { lat: 41.1979, lng: 47.1716 }, Nakhchivan: { lat: 39.2089, lng: 45.4087 } },
+  Turkey: { Istanbul: { lat: 41.0082, lng: 28.9784 }, Ankara: { lat: 39.9334, lng: 32.8597 }, Izmir: { lat: 38.4237, lng: 27.1428 } },
+  Kazakhstan: { Astana: { lat: 51.1694, lng: 71.4491 }, Almaty: { lat: 43.222, lng: 76.8512 } },
+  Georgia: { Tbilisi: { lat: 41.7151, lng: 44.8271 }, Batumi: { lat: 41.6434, lng: 41.6370 } },
+};
+
+const MapPicker = dynamic(async () => {
+  const Leaflet = (await import('leaflet')).default;
+  const { MapContainer, Marker, Popup, TileLayer, useMap, useMapEvents } = await import('react-leaflet');
+
+  function getMapPinIcon() {
+    if (typeof window === 'undefined') return undefined;
+    return Leaflet.divIcon({
+      className: 'soilcredit-map-pin',
+      html: '<span style="display:block;width:16px;height:16px;border-radius:9999px;border:3px solid white;background:#2563eb;box-shadow:0 8px 18px rgba(37,99,235,0.35)"></span>',
+      iconSize: [16, 16],
+      iconAnchor: [8, 8],
+      popupAnchor: [0, -10],
+    });
+  }
+
+  function MapViewFocus({ center }) {
+    const map = useMap();
+    useEffect(() => {
+      map.setView(center, Math.max(map.getZoom(), 7));
+    }, [map, center]);
+    return null;
+  }
+
+  function MapMarker({ value, onChange }) {
+    const map = useMap();
+    const markerIcon = useMemo(() => getMapPinIcon(), []);
+    useMapEvents({
+      click: (event) => {
+        const location = {
+          latitude: Number(event.latlng.lat.toFixed(6)),
+          longitude: Number(event.latlng.lng.toFixed(6)),
+        };
+        onChange(location);
+      },
+    });
+
+    useEffect(() => {
+      if (value) {
+        map.flyTo([value.latitude, value.longitude], Math.max(map.getZoom(), 11), { duration: 1.2 });
+      }
+    }, [map, value]);
+
+    if (!value) return null;
+    return (
+      <Marker
+        position={[value.latitude, value.longitude]}
+        draggable={true}
+        icon={markerIcon}
+        eventHandlers={{
+          dragend: (event) => {
+            const ll = event.target.getLatLng();
+            onChange({ latitude: Number(ll.lat.toFixed(6)), longitude: Number(ll.lng.toFixed(6)) });
+          },
+        }}
+      >
+        <Popup>Selected land location</Popup>
+      </Marker>
+    );
+  }
+
+  const actual = ({ value, onChange, country, city }) => {
+    const center = getCityFocus(country, city);
+    return (
+      <MapContainer key={`${country}-${city}`} center={[center.lat, center.lng]} zoom={7} minZoom={3} maxZoom={18} scrollWheelZoom className="h-[260px] w-full rounded-2xl overflow-hidden border border-slate-200">
+        <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" attribution="&copy; OpenStreetMap contributors" />
+        <MapViewFocus center={[center.lat, center.lng]} />
+        <MapMarker value={value} onChange={onChange} />
+      </MapContainer>
+    );
+  };
+  return actual;
+}, { ssr: false });
+
+function getCountryCities(country) {
+  return Object.keys(COUNTRY_CITY_FOCUS[country] || COUNTRY_CITY_FOCUS.Azerbaijan || {});
+}
+
+function getCityFocus(country, city) {
+  const cities = COUNTRY_CITY_FOCUS[country] || COUNTRY_CITY_FOCUS.Azerbaijan;
+  if (city && cities?.[city]) return cities[city];
+  const firstCity = Object.values(cities || COUNTRY_CITY_FOCUS.Azerbaijan)[0] || { lat: 40.4093, lng: 49.8671 };
+  return firstCity;
+}
+
+function getLocationText(country, city) {
+  return [city, country].filter(Boolean).join(', ');
+}
+
+function normalizeImages(images) {
+  if (!Array.isArray(images)) return [];
+  return images
+    .filter((img) => img && (img.dataUrl || img.url))
+    .map((img, index) => ({
+      id: img.id || `img-${index}-${Date.now()}`,
+      name: img.name || `land-image-${index + 1}`,
+      type: img.type || 'image/jpeg',
+      size: img.size || 0,
+      dataUrl: img.dataUrl || img.url || '',
+    }));
+}
 
 export default function LandownerDashboard() {
   const { apiFetch } = useAuth();
@@ -42,7 +152,6 @@ export default function LandownerDashboard() {
 
   return (
     <div>
-      {/* Stats */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
         <Kpi icon={MapPin} label="Lands" v={lands.length} />
         <Kpi icon={Leaf} label={t('dash.creditsAvailable')} v={totalCredits.toFixed(0)} />
@@ -110,48 +219,183 @@ function Kpi({ icon: Icon, label, v, highlight }) {
     </div>
   );
 }
+
 function Mini({ label, v }) {
   return (<div><div className="text-[10px] uppercase tracking-widest text-slate-400 font-semibold">{label}</div><div className="font-display font-bold text-[15px] text-slate-900 tabular-nums">{v}</div></div>);
 }
 
 function LandModal({ open, land, onClose, onSaved }) {
-  const { apiFetch } = useAuth(); const { t } = useLang();
-  const [f, setF] = useState({ name: '', location: '', area: 100, soil: 'loamy', region: 'caspian', forestType: 'primary', vegetation: 'moderate', description: '', priceCredit: 42.8 });
+  const { apiFetch } = useAuth();
+  const { t } = useLang();
+  const [f, setF] = useState({
+    name: '', country: 'Azerbaijan', city: 'Baku', location: '', area: 100, soil: 'loamy', region: 'caspian', forestType: 'primary', vegetation: 'moderate', description: '', priceCredit: 42.8, locationCoordinates: null,
+  });
+  const [selectedImages, setSelectedImages] = useState([]);
   const [saving, setSaving] = useState(false);
+  const [locationError, setLocationError] = useState('');
+  const [imageError, setImageError] = useState('');
+
   useEffect(() => {
-    if (land) setF({ name: land.name || '', location: land.location || '', area: land.area || 100, soil: land.soil || 'loamy', region: land.region || 'caspian', forestType: land.forestType || 'primary', vegetation: land.vegetation || 'moderate', description: land.description || '', priceCredit: land.priceCredit || 42.8 });
-    else setF({ name: '', location: '', area: 100, soil: 'loamy', region: 'caspian', forestType: 'primary', vegetation: 'moderate', description: '', priceCredit: 42.8 });
+    const country = (land?.country) || 'Azerbaijan';
+    const city = (land?.city) || getCountryCities(country)[0] || 'Baku';
+    const coords = land?.locationCoordinates || land?.locationDetails?.coordinates || null;
+    setF({
+      name: land?.name || '',
+      country,
+      city,
+      location: land?.location || getLocationText(country, city),
+      area: land?.area || 100,
+      soil: land?.soil || 'loamy',
+      region: land?.region || 'caspian',
+      forestType: land?.forestType || 'primary',
+      vegetation: land?.vegetation || 'moderate',
+      description: land?.description || '',
+      priceCredit: land?.priceCredit || 42.8,
+      locationCoordinates: coords,
+    });
+    setSelectedImages(normalizeImages(land?.images || []));
+    setLocationError('');
+    setImageError('');
   }, [land, open]);
 
-  const save = async (e) => {
-    e.preventDefault(); setSaving(true);
-    if (land) await apiFetch(`/api/lands/${land.id}`, { method: 'PUT', body: JSON.stringify(f) });
-    else await apiFetch('/api/lands', { method: 'POST', body: JSON.stringify(f) });
-    setSaving(false); onSaved(); onClose();
-  };
+  const cityOptions = useMemo(() => getCountryCities(f.country), [f.country]);
+
   const set = (k, v) => setF((x) => ({ ...x, [k]: v }));
+
+  const handleCountryChange = (country) => {
+    const nextCity = getCountryCities(country)[0] || 'Baku';
+    setF((x) => ({ ...x, country, city: nextCity, location: getLocationText(country, nextCity) }));
+  };
+
+  const handleImageSelect = async (event) => {
+    const nextFiles = Array.from(event.target.files || []);
+    if (!nextFiles.length) return;
+    const totalAfter = nextFiles.length + selectedImages.length;
+    if (totalAfter > MAX_LAND_IMAGES) {
+      setImageError('You can upload a maximum of 3 images.');
+      event.target.value = '';
+      return;
+    }
+
+    const mapped = await Promise.all(nextFiles.map((file) => new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve({ name: file.name, type: file.type, size: file.size, dataUrl: String(reader.result) });
+      reader.onerror = () => reject(new Error('Unable to read file'));
+      reader.readAsDataURL(file);
+    })));
+
+    setSelectedImages((prev) => [...prev, ...mapped]);
+    setImageError('');
+    event.target.value = '';
+  };
+
+  const removeImage = (index) => {
+    setSelectedImages((prev) => prev.filter((_, i) => i !== index));
+    setImageError('');
+  };
+
+  const save = async (e) => {
+    e.preventDefault();
+    setSaving(true);
+    setLocationError('');
+    setImageError('');
+
+    if (!f.locationCoordinates || !Number.isFinite(f.locationCoordinates.latitude) || !Number.isFinite(f.locationCoordinates.longitude)) {
+      setLocationError('Please select the location of your land on the map.');
+      setSaving(false);
+      return;
+    }
+
+    if (selectedImages.length > MAX_LAND_IMAGES) {
+      setImageError('You can upload a maximum of 3 images.');
+      setSaving(false);
+      return;
+    }
+
+    const payload = {
+      ...f,
+      location: f.location || getLocationText(f.country, f.city),
+      country: f.country || 'Azerbaijan',
+      city: f.city || 'Baku',
+      locationCoordinates: {
+        latitude: Number(f.locationCoordinates.latitude),
+        longitude: Number(f.locationCoordinates.longitude),
+      },
+      locationDetails: {
+        country: f.country || 'Azerbaijan',
+        city: f.city || 'Baku',
+        latitude: Number(f.locationCoordinates.latitude),
+        longitude: Number(f.locationCoordinates.longitude),
+      },
+      images: selectedImages,
+    };
+
+    if (land) await apiFetch(`/api/lands/${land.id}`, { method: 'PUT', body: JSON.stringify(payload) });
+    else await apiFetch('/api/lands', { method: 'POST', body: JSON.stringify(payload) });
+
+    setSaving(false);
+    onSaved();
+    onClose();
+  };
 
   return (
     <AnimatePresence>{open && (
       <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[70] flex items-center justify-center p-4">
         <div className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm" onClick={onClose} />
-        <motion.div initial={{ y: 30, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: 20, opacity: 0 }} className="relative w-full max-w-2xl bg-white rounded-3xl shadow-2xl max-h-[90vh] overflow-hidden flex flex-col">
+        <motion.div initial={{ y: 30, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: 20, opacity: 0 }} className="relative w-full max-w-3xl bg-white rounded-3xl shadow-2xl max-h-[90vh] overflow-hidden flex flex-col">
           <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
             <div className="font-display font-semibold text-lg text-slate-900">{land ? t('dash.editLand') : t('dash.addLand')}</div>
             <button onClick={onClose} className="h-8 w-8 rounded-lg border border-slate-200 flex items-center justify-center"><X className="h-4 w-4" /></button>
           </div>
           <form onSubmit={save} className="px-6 py-5 space-y-4 overflow-y-auto">
             <div className="grid sm:grid-cols-2 gap-3">
-              <L label={t('dash.landName')}><input value={f.name} onChange={e => set('name', e.target.value)} required className="field" placeholder="Ganja Foothills" /></L>
-              <L label={t('dash.location')}><input value={f.location} onChange={e => set('location', e.target.value)} className="field" placeholder="Ganja, Azerbaijan" /></L>
-              <L label={t('dash.area')}><input type="number" min="1" value={f.area} onChange={e => set('area', Number(e.target.value))} required className="field" /></L>
-              <L label={t('dash.priceCredit')}><input type="number" step="0.01" min="1" value={f.priceCredit} onChange={e => set('priceCredit', Number(e.target.value))} className="field" /></L>
-              <L label={t('calc.soil')}><Sel value={f.soil} opts={SOIL} onChange={v => set('soil', v)} tr={(v) => t('calc.soils.' + v)} /></L>
-              <L label={t('calc.region')}><Sel value={f.region} opts={REGION} onChange={v => set('region', v)} tr={(v) => t('calc.regions.' + v)} /></L>
-              <L label={t('calc.forest')}><Sel value={f.forestType} opts={FOREST} onChange={v => set('forestType', v)} tr={(v) => t('calc.forests.' + v)} /></L>
-              <L label={t('calc.vegetation')}><Sel value={f.vegetation} opts={VEG} onChange={v => set('vegetation', v)} tr={(v) => t('calc.vegs.' + v)} /></L>
+              <FormLabel label={t('dash.landName')}><input value={f.name} onChange={e => set('name', e.target.value)} required className="field" placeholder="Ganja Foothills" /></FormLabel>
+              <FormLabel label="Country"><select value={f.country} onChange={(e) => handleCountryChange(e.target.value)} className="field">
+                {Object.keys(COUNTRY_CITY_FOCUS).map((country) => <option key={country} value={country}>{country}</option>)}
+              </select></FormLabel>
+              <FormLabel label="City / Region"><select value={f.city} onChange={(e) => { set('city', e.target.value); set('location', getLocationText(f.country, e.target.value)); }} className="field">
+                {cityOptions.map((city) => <option key={city} value={city}>{city}</option>)}
+              </select></FormLabel>
+              <FormLabel label={t('dash.location')}><input value={f.location} onChange={e => set('location', e.target.value)} className="field" placeholder="Ganja, Azerbaijan" /></FormLabel>
+              <FormLabel label={t('dash.area')}><input type="number" min="1" value={f.area} onChange={e => set('area', Number(e.target.value))} required className="field" /></FormLabel>
+              <FormLabel label={t('dash.priceCredit')}><input type="number" step="0.01" min="1" value={f.priceCredit} onChange={e => set('priceCredit', Number(e.target.value))} className="field" /></FormLabel>
+              <FormLabel label={t('calc.soil')}><Sel value={f.soil} opts={SOIL} onChange={v => set('soil', v)} tr={(v) => t('calc.soils.' + v)} /></FormLabel>
+              <FormLabel label={t('calc.region')}><Sel value={f.region} opts={REGION} onChange={v => set('region', v)} tr={(v) => t('calc.regions.' + v)} /></FormLabel>
+              <FormLabel label={t('calc.forest')}><Sel value={f.forestType} opts={FOREST} onChange={v => set('forestType', v)} tr={(v) => t('calc.forests.' + v)} /></FormLabel>
+              <FormLabel label={t('calc.vegetation')}><Sel value={f.vegetation} opts={VEG} onChange={v => set('vegetation', v)} tr={(v) => t('calc.vegs.' + v)} /></FormLabel>
             </div>
-            <L label={t('dash.description')}><textarea value={f.description} onChange={e => set('description', e.target.value)} rows={3} className="field resize-none" /></L>
+
+            <div className="rounded-2xl border border-slate-200 bg-slate-50 p-3">
+              <div className="text-[13px] font-semibold text-slate-800 mb-2">📍 Torpağın konumu</div>
+              <MapPicker value={f.locationCoordinates} onChange={(value) => { set('locationCoordinates', value); set('location', getLocationText(f.country, f.city)); setLocationError(''); }} country={f.country} city={f.city} />
+              <div className="mt-2 text-[12px] text-slate-500">{f.locationCoordinates ? `Selected coordinates: ${f.locationCoordinates.latitude.toFixed(4)}, ${f.locationCoordinates.longitude.toFixed(4)}` : 'Select the exact location of your land by clicking the map.'}</div>
+              {locationError && <div className="mt-2 text-[12px] text-rose-600">{locationError}</div>}
+            </div>
+
+            <div className="rounded-2xl border border-slate-200 bg-slate-50 p-3">
+              <div className="text-[13px] font-semibold text-slate-800 mb-1">📷 Torpaq şəkilləri</div>
+              <div className="text-[12px] text-slate-500">Torpağınızın şəkillərini əlavə edə bilərsiniz. Bu bölmə istəyə bağlıdır.</div>
+              <div className="mt-3 flex items-center gap-2">
+                <label htmlFor="land-photo-upload" className="inline-flex cursor-pointer items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-[12.5px] font-medium text-slate-700">
+                  <UploadCloud className="h-4 w-4" /> Upload images
+                </label>
+                <span className="text-[11.5px] text-slate-400">Up to 3 images</span>
+              </div>
+              <input id="land-photo-upload" type="file" accept="image/*" multiple onChange={handleImageSelect} className="hidden" />
+              {selectedImages.length > 0 && (
+                <div className="mt-4 grid grid-cols-2 sm:grid-cols-3 gap-3">
+                  {selectedImages.map((image, index) => (
+                    <div key={`${image.id || index}`} className="relative overflow-hidden rounded-xl border border-slate-200 bg-white">
+                      <img src={image.dataUrl} alt={image.name} className="h-24 w-full object-cover" />
+                      <button type="button" onClick={() => removeImage(index)} className="absolute right-2 top-2 flex h-7 w-7 items-center justify-center rounded-full bg-slate-900/75 text-white hover:bg-slate-900">&times;</button>
+                    </div>
+                  ))}
+                </div>
+              )}
+              {imageError && <div className="mt-2 text-[12px] text-rose-600">{imageError}</div>}
+            </div>
+
+            <FormLabel label={t('dash.description')}><textarea value={f.description} onChange={e => set('description', e.target.value)} rows={3} className="field resize-none" /></FormLabel>
             <div className="flex gap-2 pt-2">
               <button type="button" onClick={onClose} className="flex-1 rounded-xl border border-slate-200 py-3 text-[14px] font-semibold text-slate-700">{t('dash.cancel')}</button>
               <button type="submit" disabled={saving} className="flex-1 btn-primary rounded-xl py-3 text-[14px] font-semibold flex items-center justify-center gap-2 disabled:opacity-70">{saving && <Loader2 className="h-4 w-4 animate-spin" />}{t('dash.save')}</button>
@@ -195,14 +439,14 @@ function CarbonModal({ open, land, onClose, onChanged }) {
           </div>
           <div className="px-6 py-4 border-b border-slate-100">
             <form onSubmit={add} className="grid grid-cols-2 md:grid-cols-5 gap-2 items-end">
-              <L label={t('dash.carbonDate')}><input type="date" value={f.date} onChange={e => setF({...f, date: e.target.value})} className="field !py-2" /></L>
-              <L label={t('dash.carbonAmount')}><input type="number" step="0.1" value={f.tCO2} onChange={e => setF({...f, tCO2: Number(e.target.value)})} required className="field !py-2" /></L>
-              <L label={t('dash.carbonMethod')}>
+              <FormLabel label={t('dash.carbonDate')}><input type="date" value={f.date} onChange={e => setF({...f, date: e.target.value})} className="field !py-2" /></FormLabel>
+              <FormLabel label={t('dash.carbonAmount')}><input type="number" step="0.1" value={f.tCO2} onChange={e => setF({...f, tCO2: Number(e.target.value)})} required className="field !py-2" /></FormLabel>
+              <FormLabel label={t('dash.carbonMethod')}>
                 <select value={f.method} onChange={e => setF({...f, method: e.target.value})} className="field !py-2">
                   <option value="satellite">Satellite</option><option value="in-situ">In-situ</option><option value="lidar">LiDAR</option><option value="drone">Drone</option>
                 </select>
-              </L>
-              <L label={t('dash.carbonNote')}><input value={f.note} onChange={e => setF({...f, note: e.target.value})} className="field !py-2" placeholder="Optional" /></L>
+              </FormLabel>
+              <FormLabel label={t('dash.carbonNote')}><input value={f.note} onChange={e => setF({...f, note: e.target.value})} className="field !py-2" placeholder="Optional" /></FormLabel>
               <button type="submit" disabled={saving} className="btn-primary rounded-xl py-2.5 text-[13px] font-semibold flex items-center justify-center gap-1 disabled:opacity-70">{saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <><Plus className="h-4 w-4" /> Add</>}</button>
             </form>
           </div>
@@ -226,5 +470,5 @@ function CarbonModal({ open, land, onClose, onChanged }) {
   );
 }
 
-function L({ label, children }) { return (<label className="block"><div className="text-[12px] font-medium text-slate-600 mb-1">{label}</div>{children}</label>); }
+function FormLabel({ label, children }) { return (<label className="block"><div className="text-[12px] font-medium text-slate-600 mb-1">{label}</div>{children}</label>); }
 function Sel({ value, opts, onChange, tr }) { return (<select value={value} onChange={e => onChange(e.target.value)} className="field">{opts.map(o => <option key={o} value={o}>{tr(o)}</option>)}</select>); }

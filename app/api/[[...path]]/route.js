@@ -314,11 +314,37 @@ async function handle(req, params) {
       const u = await currentUser(req); if (!u) return err('Unauthenticated', 401);
       if (u.role !== 'landowner') return err('Only landowners can add land', 403);
       const b = await json(req);
+      const locationCoordinates = b.locationCoordinates || b.locationDetails || null;
+      if (!locationCoordinates || !Number.isFinite(Number(locationCoordinates.latitude)) || !Number.isFinite(Number(locationCoordinates.longitude))) {
+        return err('Please select the location of your land on the map.', 400);
+      }
+      if (Array.isArray(b.images) && b.images.length > 3) return err('You can upload a maximum of 3 images.', 400);
+      const locationText = b.location || [b.city, b.country].filter(Boolean).join(', ') || '';
+      const safeImages = Array.isArray(b.images) ? b.images.slice(0, 3).map((img, index) => ({
+        id: img?.id || `img-${index}`,
+        name: img?.name || `land-image-${index + 1}`,
+        type: img?.type || 'image/jpeg',
+        size: Number(img?.size) || 0,
+        dataUrl: img?.dataUrl || img?.url || '',
+      })).filter((img) => img.dataUrl) : [];
       const est = estimate({ area: b.area, soil: b.soil, region: b.region, forestType: b.forestType, vegetation: b.vegetation });
       const land = {
         id: uuidv4(), ownerId: u.id, ownerName: u.name,
         name: b.name || 'Untitled Plot',
-        location: b.location || '',
+        country: b.country || 'Azerbaijan',
+        city: b.city || 'Baku',
+        location: locationText,
+        locationCoordinates: {
+          latitude: Number(locationCoordinates.latitude),
+          longitude: Number(locationCoordinates.longitude),
+        },
+        locationDetails: {
+          country: b.country || 'Azerbaijan',
+          city: b.city || 'Baku',
+          latitude: Number(locationCoordinates.latitude),
+          longitude: Number(locationCoordinates.longitude),
+        },
+        images: safeImages,
         area: Number(b.area) || 0,
         soil: b.soil || 'loamy',
         region: b.region || 'temperate',
@@ -348,7 +374,33 @@ async function handle(req, params) {
       if (method === 'PUT') {
         const b = await json(req);
         const upd = {};
-        ['name','location','area','soil','region','forestType','vegetation','description','priceCredit','forSale','creditsAvailable'].forEach(k => { if (b[k] !== undefined) upd[k] = b[k]; });
+        const safeImages = Array.isArray(b.images) ? b.images.slice(0, 3).map((img, index) => ({
+          id: img?.id || `img-${index}`,
+          name: img?.name || `land-image-${index + 1}`,
+          type: img?.type || 'image/jpeg',
+          size: Number(img?.size) || 0,
+          dataUrl: img?.dataUrl || img?.url || '',
+        })).filter((img) => img.dataUrl) : undefined;
+        if (Array.isArray(b.images) && b.images.length > 3) return err('You can upload a maximum of 3 images.', 400);
+        const locationCoordinates = b.locationCoordinates || b.locationDetails || null;
+        const locationText = b.location || [b.city, b.country].filter(Boolean).join(', ') || '';
+        ['name','country','city','location','area','soil','region','forestType','vegetation','description','priceCredit','forSale','creditsAvailable'].forEach(k => { if (b[k] !== undefined) upd[k] = b[k]; });
+        if (locationCoordinates && Number.isFinite(Number(locationCoordinates.latitude)) && Number.isFinite(Number(locationCoordinates.longitude))) {
+          upd.locationCoordinates = { latitude: Number(locationCoordinates.latitude), longitude: Number(locationCoordinates.longitude) };
+          upd.locationDetails = {
+            country: b.country || land.country || 'Azerbaijan',
+            city: b.city || land.city || 'Baku',
+            latitude: Number(locationCoordinates.latitude),
+            longitude: Number(locationCoordinates.longitude),
+          };
+        } else if (land.locationCoordinates) {
+          upd.locationCoordinates = land.locationCoordinates;
+          upd.locationDetails = land.locationDetails || { country: land.country || 'Azerbaijan', city: land.city || 'Baku', latitude: land.locationCoordinates.latitude, longitude: land.locationCoordinates.longitude };
+        } else if (b.locationCoordinates !== undefined || b.locationDetails !== undefined) {
+          return err('Please select the location of your land on the map.', 400);
+        }
+        if (locationText) upd.location = locationText;
+        if (safeImages) upd.images = safeImages;
         if (['area','soil','region','forestType','vegetation'].some(k => k in upd)) {
           const merged = { ...land, ...upd };
           upd.estimate = estimate(merged);
