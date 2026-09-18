@@ -1,9 +1,37 @@
 'use client';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Sparkles, Loader2, ArrowRight, Leaf, Coins, TrendingUp, CheckCircle2 } from 'lucide-react';
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
 import { useLang } from '@/lib/providers';
+
+function AnimatedNumber({ value, decimals = 0, prefix = '', suffix = '' }) {
+  const [display, setDisplay] = useState(0);
+
+  useEffect(() => {
+    let frame;
+    const duration = 1200;
+    const start = performance.now();
+    const from = 0;
+
+    const tick = (now) => {
+      const progress = Math.min((now - start) / duration, 1);
+      const eased = 1 - Math.pow(1 - progress, 3);
+      setDisplay(from + (value - from) * eased);
+      if (progress < 1) frame = requestAnimationFrame(tick);
+    };
+
+    frame = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(frame);
+  }, [value]);
+
+  const formatValue = (num) => {
+    if (decimals > 0) return Number(num).toLocaleString('en-US', { minimumFractionDigits: decimals, maximumFractionDigits: decimals });
+    return Number(num).toLocaleString('en-US');
+  };
+
+  return <span className="tabular-nums">{prefix}{formatValue(display)}{suffix}</span>;
+}
 
 function Chip({ options, value, onChange }) {
   return (
@@ -86,9 +114,9 @@ export default function Calculator() {
                 <div className="flex items-center gap-2"><span className="font-display font-semibold text-lg text-slate-900">Estimated Impact</span><span className="text-[10.5px] uppercase tracking-widest text-emerald-600 font-semibold px-2 py-0.5 rounded-full bg-emerald-50 border border-emerald-200">Live</span></div>
               </div>
               <div className="grid sm:grid-cols-3 gap-3 mb-5">
-                <ResultCard icon={Leaf} label={t('calc.carbonYr')} value={result ? `${result.estimatedCarbonPerYear.toLocaleString()} tCO₂` : '—'} sub={result ? `${result.tenYearCarbon.toLocaleString()} t / 10y` : t('calc.empty')} />
-                <ResultCard icon={Coins} label={t('calc.creditsYr')} value={result ? Math.round(result.creditsPerYear).toLocaleString() : '—'} sub={result ? `@ $${result.creditPrice}` : 'Verra-aligned'} />
-                <ResultCard icon={TrendingUp} label={t('calc.incomeYr')} value={result ? `$${Math.round(result.annualIncomeUSD).toLocaleString()}` : '—'} sub={result ? `$${Math.round(result.tenYearIncomeUSD).toLocaleString()} / 10y` : 'Paid quarterly'} highlight />
+                <ResultCard icon={Leaf} label={t('calc.carbonYr')} value={result ? result.estimatedCarbonPerYear : 0} suffix=" tCO₂" sub={result ? `${result.tenYearCarbon.toLocaleString()} t / 10y` : t('calc.empty')} valueType="carbon" />
+                <ResultCard icon={Coins} label={t('calc.creditsYr')} value={result ? Math.round(result.creditsPerYear) : 0} sub={result ? `@ $${result.creditPrice}` : 'Verra-aligned'} valueType="credits" />
+                <ResultCard icon={TrendingUp} label={t('calc.incomeYr')} value={result ? Math.round(result.annualIncomeUSD) : 0} prefix="$" sub={result ? `$${Math.round(result.tenYearIncomeUSD).toLocaleString()} / 10y` : 'Paid quarterly'} highlight valueType="income" />
               </div>
               <div className="rounded-2xl bg-slate-50 border border-slate-100 p-4">
                 <div className="flex items-center justify-between mb-2">
@@ -116,15 +144,19 @@ export default function Calculator() {
   );
 }
 
-function ResultCard({ icon: Icon, label, value, sub, highlight }) {
+function ResultCard({ icon: Icon, label, value, sub, highlight, prefix = '', suffix = '', valueType = 'default' }) {
+  const hasValue = Number.isFinite(value) && value > 0;
+
   return (
-    <div className={`rounded-2xl p-4 border ${highlight ? 'bg-gradient-to-br from-blue-50 to-emerald-50 border-blue-200' : 'bg-white border-slate-200'}`}>
+    <motion.div whileHover={{ y: -4, scale: 1.01 }} transition={{ duration: 0.2 }} className={`rounded-2xl p-4 border ${highlight ? 'bg-gradient-to-br from-blue-50 to-emerald-50 border-blue-200' : 'bg-white border-slate-200'}`}>
       <div className="flex items-center gap-2 mb-2">
         <div className={`h-7 w-7 rounded-lg flex items-center justify-center ${highlight ? 'bg-gradient-to-br from-blue-500 to-emerald-500 text-white' : 'bg-blue-50 text-blue-600 border border-blue-100'}`}><Icon className="h-3.5 w-3.5" /></div>
         <span className="text-[11.5px] font-medium text-slate-600">{label}</span>
       </div>
-      <div className="font-display font-bold text-[22px] tabular-nums leading-tight text-slate-900">{value}</div>
+      <div className="font-display font-bold text-[22px] leading-tight text-slate-900">
+        {hasValue ? <AnimatedNumber value={value} decimals={valueType === 'income' ? 0 : 0} prefix={prefix} suffix={suffix} /> : '—'}
+      </div>
       <div className="text-[11px] text-slate-500 mt-1">{sub}</div>
-    </div>
+    </motion.div>
   );
 }

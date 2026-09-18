@@ -5,7 +5,6 @@ import { AnimatePresence } from 'framer-motion';
 import { Github, Linkedin, Instagram, Facebook, ArrowUpRight, X, Users } from 'lucide-react';
 import { useLang } from '@/lib/providers';
 
-// Replace these values with the final team profiles and local image paths when available.
 const TEAM_MEMBERS = [
   {
     image: '/team/nazrin.jpeg',
@@ -59,6 +58,15 @@ export default function Team({ isOpen, onOpen, onClose }) {
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [isOpen, onClose]);
+
+  const handleMemberMove = (event, index) => {
+    const rect = event.currentTarget.getBoundingClientRect();
+    const x = (event.clientX - (rect.left + rect.width / 2)) / rect.width;
+    const y = (event.clientY - (rect.top + rect.height / 2)) / rect.height;
+    event.currentTarget.style.transform = `perspective(1000px) rotateX(${(-y * 3).toFixed(2)}deg) rotateY(${(x * 3).toFixed(2)}deg) translateY(-4px)`;
+    event.currentTarget.style.transition = 'transform 180ms ease-out';
+    if (activeMember !== index) setActiveMember(index);
+  };
 
   return (
     <>
@@ -129,7 +137,10 @@ export default function Team({ isOpen, onOpen, onClose }) {
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
                 transition={{ duration: 0.5, delay: index * 0.08 }}
+                whileHover={{ y: -6, scale: 1.01 }}
                 className={`card-soft group relative cursor-pointer overflow-hidden p-0 ${isActive ? 'border-blue-200 shadow-[0_20px_40px_-16px_rgba(37,99,235,0.22)]' : ''}`}
+                onMouseMove={(event) => handleMemberMove(event, index)}
+                onMouseLeave={(event) => { event.currentTarget.style.transform = ''; event.currentTarget.style.transition = 'transform 260ms ease'; }}
                 onClick={() => setActiveMember(isActive ? null : index)}
                 onKeyDown={(event) => {
                   if (event.key === 'Enter' || event.key === ' ') setActiveMember(isActive ? null : index);

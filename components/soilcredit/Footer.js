@@ -1,7 +1,7 @@
 'use client';
 import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { Leaf, Send, CheckCircle2, Twitter, Linkedin, Github, ArrowRight, Instagram, Facebook } from 'lucide-react';
+import { Leaf, Send, CheckCircle2, Linkedin, ArrowRight, Instagram, Facebook } from 'lucide-react';
 import { useLang } from '@/lib/providers';
 
 export default function Footer() {
@@ -15,11 +15,14 @@ export default function Footer() {
     <footer id="footer" className="relative bg-white border-t border-slate-200 pt-16 pb-8">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.5 }}
-          className="rounded-3xl bg-gradient-to-br from-blue-50 via-white to-emerald-50 border border-slate-200 p-7 md:p-9 mb-14 flex flex-col md:flex-row items-start md:items-center justify-between gap-5">
-          <div><div className="font-display font-bold text-2xl text-gradient-bg mb-1">{t('footer.newsletter')}</div><div className="text-slate-600 text-[14px]">{t('footer.newsletterHint')}</div></div>
+          className="rounded-3xl bg-gradient-to-br from-blue-50 via-white to-emerald-50 border border-slate-200 p-7 md:p-9 mb-14 flex flex-col md:flex-row items-start md:items-center justify-between gap-5 shadow-[0_30px_60px_-30px_rgba(37,99,235,0.18)]">
+          <div>
+            <div className="font-display font-bold text-2xl text-gradient-bg mb-1">{t('footer.newsletter')}</div>
+            <div className="text-slate-600 text-[14px]">{t('footer.newsletterHint')}</div>
+          </div>
           <form onSubmit={subscribe} className="flex w-full md:w-auto gap-2">
-            <input type="email" required value={email} onChange={e => setEmail(e.target.value)} placeholder="you@earth.co" className="field md:w-72" />
-            <button className="btn-primary inline-flex items-center gap-1.5 rounded-xl px-5 py-3 text-[13.5px] font-semibold">{ok ? (<><CheckCircle2 className="h-4 w-4" /> {t('footer.subscribed')}</>) : (<>{t('footer.subscribe')} <Send className="h-4 w-4" /></>)}</button>
+            <motion.input whileFocus={{ scale: 1.01 }} type="email" required value={email} onChange={e => setEmail(e.target.value)} placeholder="you@earth.co" className="field md:w-72" />
+            <motion.button whileHover={{ y: -2, scale: 1.01 }} whileTap={{ scale: 0.98 }} className="btn-primary inline-flex items-center gap-1.5 rounded-xl px-5 py-3 text-[13.5px] font-semibold">{ok ? (<><CheckCircle2 className="h-4 w-4" /> {t('footer.subscribed')}</>) : (<>{t('footer.subscribe')} <Send className="h-4 w-4" /></>)}</motion.button>
           </form>
         </motion.div>
 
@@ -61,7 +64,7 @@ export default function Footer() {
           {[{ title: 'Product', links: ['Overview', t('nav.calc'), t('nav.market'), t('nav.dashboard')] }, { title: 'Company', links: ['About', 'Careers', 'Press', 'Contact'] }, { title: 'Legal', links: ['Privacy', 'Terms', 'Security', 'Cookies'] }].map((c, i) => (
             <div key={i}>
               <div className="text-[12px] uppercase font-semibold text-slate-500 tracking-widest mb-3">{c.title}</div>
-              <ul className="space-y-2">{c.links.map((l, j) => (<li key={j}><a href="#" className="text-[13px] text-slate-600 hover:text-blue-600 inline-flex items-center gap-1 group">{l}<ArrowRight className="h-3 w-3 opacity-0 -translate-x-1 group-hover:opacity-100 group-hover:translate-x-0 transition-all" /></a></li>))}</ul>
+              <ul className="space-y-2">{c.links.map((l, j) => (<li key={j}><motion.a whileHover={{ x: 4 }} href="#" className="text-[13px] text-slate-600 hover:text-blue-600 inline-flex items-center gap-1 group">{l}<ArrowRight className="h-3 w-3 opacity-0 -translate-x-1 group-hover:opacity-100 group-hover:translate-x-0 transition-all" /></motion.a></li>))}</ul>
             </div>
           ))}
         </div>

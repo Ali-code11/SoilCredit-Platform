@@ -4,6 +4,8 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Search, MapPin, ShieldCheck, ArrowUpRight, Coins, Leaf } from 'lucide-react';
 import { useLang, useAuth } from '@/lib/providers';
 
+const marqueeItems = ['CARBON CREDITS', 'LAND', 'AI', 'SOIL', 'MARKETPLACE', 'REPORTING'];
+
 export default function Marketplace({ onOpenAuth }) {
   const { t } = useLang();
   const { user, apiFetch } = useAuth();
@@ -30,7 +32,16 @@ export default function Marketplace({ onOpenAuth }) {
 
   return (
     <section id="marketplace" className="relative py-24 md:py-32 bg-white">
-      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+      <div className="overflow-hidden border-y border-slate-200 bg-slate-50/70">
+        <div className="hero-marquee hero-marquee-left">
+          <div className="hero-marquee-track">
+            {[...marqueeItems, ...marqueeItems].map((item, idx) => (
+              <span key={`${item}-${idx}`} className="hero-marquee-item">{item}</span>
+            ))}
+          </div>
+        </div>
+      </div>
+      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 pt-10">
         <motion.div initial={{ opacity: 0, y: 24 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true, margin: '-100px' }} transition={{ duration: 0.6 }} className="text-center max-w-3xl mx-auto mb-10">
           <span className="chip mb-4">{t('market.tag')}</span>
           <h2 className="font-display font-bold text-[34px] md:text-[52px] leading-[1.05] tracking-tight"><span className="text-gradient-bg">{t('market.title')}</span></h2>
@@ -40,7 +51,7 @@ export default function Marketplace({ onOpenAuth }) {
         <div className="flex flex-wrap items-center gap-3 mb-6 max-w-2xl mx-auto">
           <div className="relative flex-1 min-w-[220px]">
             <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-            <input value={q} onChange={(e) => setQ(e.target.value)} placeholder={t('market.search')} className="field pl-10" />
+            <input value={q} onChange={(e) => setQ(e.target.value)} placeholder={t('market.search')} className="field pl-10 transition-all duration-300 focus:scale-[1.01]" />
           </div>
         </div>
 
@@ -55,10 +66,9 @@ export default function Marketplace({ onOpenAuth }) {
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
             <AnimatePresence mode="popLayout">
               {filtered.map((l, i) => (
-                <motion.div key={l.id} layout initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} transition={{ duration: 0.35, delay: (i % 6) * 0.04 }}
-                  className="card-soft overflow-hidden">
+                <motion.div key={l.id} layout initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} transition={{ duration: 0.35, delay: (i % 6) * 0.04 }} whileHover={{ y: -6, scale: 1.01 }} className="card-soft group relative overflow-hidden">
                   <div className="relative h-32 overflow-hidden">
-                    <div className="absolute inset-0 bg-gradient-to-br from-blue-400 via-emerald-400 to-emerald-500" />
+                    <motion.div whileHover={{ scale: 1.08 }} transition={{ duration: 0.5 }} className="absolute inset-0 bg-gradient-to-br from-blue-400 via-emerald-400 to-emerald-500" />
                     <div className="absolute inset-0 grid-bg-light opacity-30" />
                     <div className="absolute top-3 left-3 chip !bg-white/95 !border-white"><ShieldCheck className="h-3 w-3" /> Verified</div>
                     <div className="absolute top-3 right-3 rounded-full bg-white/95 px-2.5 py-1 border border-white text-[11px] font-semibold text-blue-600">{t('market.esg')} 94+</div>
@@ -80,6 +90,7 @@ export default function Marketplace({ onOpenAuth }) {
                       </button>
                     </div>
                   </div>
+                  <div className="pointer-events-none absolute inset-x-3 bottom-3 z-10 rounded-xl border border-white/25 bg-slate-950/10 opacity-0 transition duration-300 group-hover:opacity-100 backdrop-blur-sm" />
                 </motion.div>
               ))}
             </AnimatePresence>

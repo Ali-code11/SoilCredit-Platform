@@ -205,6 +205,19 @@ body {
 .dot-live { position: relative; }
 .dot-live::before { content: ''; position: absolute; inset: 0; border-radius: 999px; background: #10b981; animation: pulse-ring 2s cubic-bezier(0.4,0,0.6,1) infinite; }
 
+.story-step {
+  position: relative;
+  padding-left: 1.25rem;
+  border-left: 1px solid rgba(16, 185, 129, 0.18);
+}
+
+@media (min-width: 768px) {
+  .story-step {
+    padding-left: 0;
+    border-left: none;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   html { scroll-behavior: auto; }
   *, *::before, *::after {
