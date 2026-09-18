@@ -40,7 +40,7 @@ function App() {
   }, []);
 
   return (
-    <main className="relative bg-white text-slate-900">
+    <main className="site-shell relative bg-white text-slate-900">
       <Navbar onOpenAuth={openAuth} onOpenTeam={openTeam} />
       <Hero onOpenAuth={openAuth} />
       <WhySoilCredit />

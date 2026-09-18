@@ -50,32 +50,33 @@ export default function Navbar({ onOpenAuth, onOpenTeam }) {
     { label: t('nav.faq'), href: '#faq' },
     { label: t('nav.contact') || 'Contact', href: '#footer' },
   ];
+  const isHomeDark = pathname === '/' && !scrolled;
 
   return (
     <>
-      <header className={`fixed top-0 inset-x-0 z-50 transition-all duration-300 ${scrolled ? 'bg-white/85 backdrop-blur-xl border-b border-slate-200/70 shadow-[0_2px_20px_-8px_rgba(15,23,42,0.08)]' : 'bg-transparent'}`}>
+      <header className={`fixed top-0 inset-x-0 z-50 transition-all duration-300 ${scrolled ? 'bg-white/85 backdrop-blur-xl border-b border-slate-200/70 shadow-[0_2px_20px_-8px_rgba(15,23,42,0.08)]' : isHomeDark ? 'bg-[#040b09]/20 backdrop-blur-md border-b border-white/10' : 'bg-transparent'}`}>
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16 md:h-[72px]">
             <Link href="/" className="flex items-center gap-2 group">
               <div className="h-9 w-9 rounded-xl bg-gradient-to-br from-blue-500 to-emerald-500 flex items-center justify-center shadow-lg shadow-blue-500/20">
                 <Leaf className="h-5 w-5 text-white" strokeWidth={2.5} />
               </div>
-              <span className="font-display font-bold text-[22px] text-gradient-blue">SoilCredit</span>
+              <span className={`font-display font-bold text-[22px] ${isHomeDark ? 'text-white' : 'text-gradient-blue'}`}>SoilCredit</span>
             </Link>
 
             <nav className="hidden lg:flex items-center gap-1">
               {links.map((l) => (
-                <button key={l.label} onClick={() => handleNavClick(l.href)} className="px-3 py-2 text-[14px] font-medium text-slate-600 hover:text-blue-600 transition">{l.label}</button>
+                <button key={l.label} onClick={() => handleNavClick(l.href)} className={`px-3 py-2 text-[14px] font-medium transition ${isHomeDark ? 'text-white/75 hover:text-white' : 'text-slate-600 hover:text-blue-600'}`}>{l.label}</button>
               ))}
             </nav>
 
             <div className="flex items-center gap-2">
               {/* Language switch */}
-              <div className="hidden sm:flex items-center gap-1 rounded-xl border border-slate-200 bg-white px-2 py-1.5">
-                <Globe className="h-3.5 w-3.5 text-slate-500" />
-                <button onClick={() => setLang('en')} className={`text-[12px] font-semibold px-1.5 rounded ${lang==='en' ? 'text-blue-600' : 'text-slate-400 hover:text-slate-600'}`}>EN</button>
-                <span className="text-slate-300">/</span>
-                <button onClick={() => setLang('az')} className={`text-[12px] font-semibold px-1.5 rounded ${lang==='az' ? 'text-blue-600' : 'text-slate-400 hover:text-slate-600'}`}>AZ</button>
+              <div className={`hidden sm:flex items-center gap-1 rounded-xl border px-2 py-1.5 ${isHomeDark ? 'border-white/15 bg-white/5' : 'border-slate-200 bg-white'}`}>
+                <Globe className={`h-3.5 w-3.5 ${isHomeDark ? 'text-white/70' : 'text-slate-500'}`} />
+                <button onClick={() => setLang('en')} className={`text-[12px] font-semibold px-1.5 rounded ${lang==='en' ? (isHomeDark ? 'text-white' : 'text-blue-600') : (isHomeDark ? 'text-white/55 hover:text-white' : 'text-slate-400 hover:text-slate-600')}`}>EN</button>
+                <span className={isHomeDark ? 'text-white/35' : 'text-slate-300'}>/</span>
+                <button onClick={() => setLang('az')} className={`text-[12px] font-semibold px-1.5 rounded ${lang==='az' ? (isHomeDark ? 'text-white' : 'text-blue-600') : (isHomeDark ? 'text-white/55 hover:text-white' : 'text-slate-400 hover:text-slate-600')}`}>AZ</button>
               </div>
 
               {user ? (
