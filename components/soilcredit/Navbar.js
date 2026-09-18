@@ -12,11 +12,19 @@ export default function Navbar({ onOpenAuth, onOpenTeam }) {
   const router = useRouter();
   const pathname = usePathname();
   const [scrolled, setScrolled] = useState(false);
+  const [navVisible, setNavVisible] = useState(true);
   const [open, setOpen] = useState(false);
   const [menu, setMenu] = useState(false);
 
   useEffect(() => {
-    const onScroll = () => setScrolled(window.scrollY > 20);
+    let lastY = window.scrollY;
+    const onScroll = () => {
+      const currentY = window.scrollY;
+      const shouldShow = currentY < 20 || currentY < lastY || currentY < 150;
+      setNavVisible(shouldShow);
+      setScrolled(currentY > 20);
+      lastY = currentY;
+    };
     onScroll();
     window.addEventListener('scroll', onScroll, { passive: true });
     return () => window.removeEventListener('scroll', onScroll);
@@ -54,7 +62,7 @@ export default function Navbar({ onOpenAuth, onOpenTeam }) {
 
   return (
     <>
-      <header className={`fixed top-0 inset-x-0 z-50 transition-all duration-300 ${scrolled ? 'bg-white/85 backdrop-blur-xl border-b border-slate-200/70 shadow-[0_2px_20px_-8px_rgba(15,23,42,0.08)]' : isHomeDark ? 'bg-[#040b09]/20 backdrop-blur-md border-b border-white/10' : 'bg-transparent'}`}>
+      <motion.header animate={{ y: navVisible ? 0 : -90 }} transition={{ duration: 0.24, ease: 'easeOut' }} className={`fixed top-0 inset-x-0 z-50 ${scrolled ? 'bg-white/85 backdrop-blur-xl border-b border-slate-200/70 shadow-[0_2px_20px_-8px_rgba(15,23,42,0.08)]' : isHomeDark ? 'bg-[#040b09]/20 backdrop-blur-md border-b border-white/10' : 'bg-transparent'}`}>
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16 md:h-[72px]">
             <Link href="/" className="flex items-center gap-2 group">
@@ -113,7 +121,7 @@ export default function Navbar({ onOpenAuth, onOpenTeam }) {
             </div>
           </div>
         </div>
-      </header>
+      </motion.header>
 
       <AnimatePresence>
         {open && (

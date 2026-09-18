@@ -157,6 +157,51 @@ body {
 @keyframes spin-slow { to { transform: rotate(360deg); } }
 .animate-spin-slow { animation: spin-slow 24s linear infinite; }
 
+@keyframes marquee-left { from { transform: translateX(0); } to { transform: translateX(-50%); } }
+@keyframes marquee-right { from { transform: translateX(-50%); } to { transform: translateX(0); } }
+
+.hero-marquee {
+  position: relative;
+  overflow: hidden;
+  border-top: 1px solid rgba(148, 163, 184, 0.18);
+  border-bottom: 1px solid rgba(148, 163, 184, 0.18);
+  background: rgba(248, 250, 252, 0.7);
+}
+
+.hero-marquee-track {
+  display: flex;
+  width: max-content;
+  align-items: center;
+  gap: 2rem;
+  white-space: nowrap;
+  padding: 0.9rem 0;
+  animation-duration: 26s;
+  animation-timing-function: linear;
+  animation-iteration-count: infinite;
+}
+
+.hero-marquee-left .hero-marquee-track { animation-name: marquee-left; }
+.hero-marquee-right .hero-marquee-track { animation-name: marquee-right; }
+
+.hero-marquee-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.75rem;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: rgba(15, 23, 42, 0.72);
+}
+
+.hero-marquee-item::after {
+  content: '•';
+  opacity: 0.5;
+  color: rgba(37, 99, 235, 0.8);
+}
+
+.hero-marquee-item:last-child::after { content: ''; }
+
 .dot-live { position: relative; }
 .dot-live::before { content: ''; position: absolute; inset: 0; border-radius: 999px; background: #10b981; animation: pulse-ring 2s cubic-bezier(0.4,0,0.6,1) infinite; }
 

@@ -39,10 +39,31 @@ function App() {
     }
   }, []);
 
+  const marqueeLeft = ['LAND', 'DATA', 'AI', 'CARBON', 'CREDIT', 'FUTURE'];
+  const marqueeRight = ['SOILCREDIT', 'TURNING LAND INTO VALUE', 'SATELLITE', 'MARKETPLACE'];
+
   return (
     <main className="site-shell relative bg-white text-slate-900">
       <Navbar onOpenAuth={openAuth} onOpenTeam={openTeam} />
       <Hero onOpenAuth={openAuth} />
+
+      <div className="overflow-hidden border-y border-slate-200/80 bg-white">
+        <div className="hero-marquee hero-marquee-left">
+          <div className="hero-marquee-track">
+            {[...marqueeLeft, ...marqueeLeft].map((item, idx) => (
+              <span key={`${item}-${idx}`} className="hero-marquee-item">{item}</span>
+            ))}
+          </div>
+        </div>
+        <div className="hero-marquee hero-marquee-right">
+          <div className="hero-marquee-track">
+            {[...marqueeRight, ...marqueeRight].map((item, idx) => (
+              <span key={`${item}-${idx}`} className="hero-marquee-item">{item}</span>
+            ))}
+          </div>
+        </div>
+      </div>
+
       <WhySoilCredit />
       <HowItWorks />
       <Features />
