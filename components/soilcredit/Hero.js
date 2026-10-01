@@ -1,7 +1,7 @@
 'use client';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { AnimatePresence, motion, useMotionValue, useReducedMotion, useScroll, useSpring, useTransform } from 'framer-motion';
-import { Sparkles, ArrowRight, Calculator, Orbit, Activity } from 'lucide-react';
+import { Sparkles, ArrowRight, Calculator, Orbit, Activity, Satellite, Blocks } from 'lucide-react';
 import { useLang } from '@/lib/providers';
 
 const flowSteps = ['LAND', 'SATELLITE', 'AI', 'CARBON', 'CREDIT', 'MARKET'];
@@ -11,15 +11,17 @@ export default function Hero({ onOpenAuth }) {
   const reducedMotion = useReducedMotion();
   const [showIntro, setShowIntro] = useState(false);
   const [pointer, setPointer] = useState({ x: 0, y: 0 });
-  const heroRef = useRef(null);
   const magneticX = useMotionValue(0);
   const magneticY = useMotionValue(0);
   const smoothX = useSpring(magneticX, { stiffness: 220, damping: 18 });
   const smoothY = useSpring(magneticY, { stiffness: 220, damping: 18 });
-  const { scrollYProgress } = useScroll({ target: heroRef, offset: ['start start', 'end start'] });
+  const { scrollY } = useScroll();
+  const scrollYProgress = useTransform(scrollY, [0, 1000], [0, 1]);
   const bgY = useTransform(scrollYProgress, [0, 1], [0, 90]);
   const midY = useTransform(scrollYProgress, [0, 1], [0, 150]);
   const fgY = useTransform(scrollYProgress, [0, 1], [0, 220]);
+  const chainOpacity = useTransform(scrollYProgress, [0.28, 0.52, 0.78], [0, 0.4, 0]);
+  const satelliteOpacity = useTransform(scrollYProgress, [0.56, 0.82, 1], [0, 0.42, 0.24]);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -52,11 +54,11 @@ export default function Hero({ onOpenAuth }) {
   }, [reducedMotion]);
 
   const floatingNodes = [
-    { className: 'left-[8%] top-[18%]', delay: 0, duration: 7, size: 'h-3.5 w-3.5', color: 'bg-emerald-300/80' },
+    { className: 'left-[8%] top-[18%]', delay: 0, duration: 7, size: 'h-3.5 w-3.5', color: 'bg-blue-300/80' },
     { className: 'left-[24%] top-[36%]', delay: 0.8, duration: 8.4, size: 'h-2.5 w-2.5', color: 'bg-blue-300/80' },
-    { className: 'right-[18%] top-[28%]', delay: 1.3, duration: 9.2, size: 'h-3 w-3', color: 'bg-emerald-200/80' },
+    { className: 'right-[18%] top-[28%]', delay: 1.3, duration: 9.2, size: 'h-3 w-3', color: 'bg-blue-200/80' },
     { className: 'right-[12%] bottom-[24%]', delay: 1.8, duration: 7.8, size: 'h-2.5 w-2.5', color: 'bg-blue-200/80' },
-    { className: 'left-[52%] bottom-[20%]', delay: 0.6, duration: 8.8, size: 'h-2 w-2', color: 'bg-emerald-300/80' }
+    { className: 'left-[52%] bottom-[20%]', delay: 0.6, duration: 8.8, size: 'h-2 w-2', color: 'bg-blue-300/80' }
   ];
 
   const handleMagneticMove = (event) => {
@@ -76,10 +78,22 @@ export default function Hero({ onOpenAuth }) {
   const mainTitle = [t('hero.title1'), t('hero.title2')];
 
   return (
-    <section ref={heroRef} id="home" className="relative overflow-hidden bg-[#040b09] pt-28 pb-20 md:pt-36 md:pb-28 text-white">
+    <section id="home" className="relative overflow-hidden bg-[#07142f] pt-28 pb-20 md:pt-36 md:pb-28 text-white">
       <motion.div style={{ y: bgY }} className="absolute inset-0 topographic-surface opacity-60" />
       <motion.div style={{ y: midY }} className="absolute inset-0 bg-[radial-gradient(circle_at_top,_rgba(14,165,233,0.18),_transparent_32%),radial-gradient(circle_at_bottom_right,_rgba(34,197,94,0.15),_transparent_30%)]" />
-      <motion.div style={{ y: fgY }} className="absolute inset-x-0 top-0 h-32 bg-gradient-to-b from-[#020b09] to-transparent" />
+      <motion.div style={{ y: fgY }} className="absolute inset-x-0 top-0 h-32 bg-gradient-to-b from-[#07142f] to-transparent" />
+      {!reducedMotion && <div className="hero-journey" aria-hidden="true">
+        <svg viewBox="0 0 900 360" className="hero-journey-lines" fill="none">
+          <path d="M74 78 C170 130 225 198 330 200 S500 198 610 180 S755 142 835 100" />
+          <path d="M155 131 C166 105 175 83 183 58" />
+          <path d="M384 200 L418 166 L452 200 L418 234 Z M418 166 V234 M384 200 H452" />
+          <path d="M688 155 L735 128 M735 128 L766 143 M735 128 L741 96 M688 155 L681 181 M688 155 L712 180" />
+          <path d="M659 144 L689 162 M718 111 L749 129" />
+          <circle cx="418" cy="200" r="4" /><circle cx="384" cy="200" r="4" /><circle cx="452" cy="200" r="4" />
+        </svg>
+        <motion.div className="hero-journey-blocks" style={{ opacity: chainOpacity }}><Blocks /></motion.div>
+        <motion.div className="hero-journey-satellite" style={{ opacity: satelliteOpacity }}><Satellite /></motion.div>
+      </div>}
       <motion.div style={{ x: pointer.x * 18, y: pointer.y * 18 }} className="absolute left-1/2 top-1/2 h-[32rem] w-[32rem] -translate-x-1/2 -translate-y-1/2 rounded-full border border-white/10" />
       <motion.div style={{ x: pointer.x * 24, y: pointer.y * 24 }} className="absolute left-1/2 top-1/2 h-[28rem] w-[28rem] -translate-x-1/2 -translate-y-1/2 rounded-full border border-emerald-300/10" />
       <motion.div style={{ x: pointer.x * 18, y: pointer.y * 12 }} className="absolute -left-20 bottom-8 h-72 w-72 rounded-full bg-blue-500/10 blur-[100px]" />
@@ -128,7 +142,7 @@ export default function Hero({ onOpenAuth }) {
           <div className="text-center lg:text-left">
             <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.7 }} className="mb-5 flex items-center justify-center gap-2 lg:justify-start">
               <div className="flex h-10 w-10 items-center justify-center rounded-2xl border border-white/10 bg-white/5 backdrop-blur-sm">
-                <Orbit className="h-5 w-5 text-emerald-300" />
+                <Orbit className="h-5 w-5 text-blue-200" />
               </div>
               <span className="text-[12px] uppercase tracking-[0.28em] text-white/70">Satellite • AI • Carbon</span>
             </motion.div>
@@ -140,7 +154,7 @@ export default function Hero({ onOpenAuth }) {
                   initial={{ opacity: 0, y: 28, clipPath: 'inset(0 100% 0 0 round 18px)', filter: 'blur(8px)' }}
                   animate={{ opacity: 1, y: 0, clipPath: 'inset(0 0% 0 0 round 18px)', filter: 'blur(0px)' }}
                   transition={{ delay: 0.1 + lineIndex * 0.12, duration: 0.7, ease: [0.22, 1, 0.36, 1] }}
-                  className={`block ${lineIndex === 1 ? 'bg-gradient-to-r from-blue-300 via-emerald-200 to-emerald-400 bg-clip-text text-transparent' : 'text-white'}`}
+                  className={`block ${lineIndex === 1 ? 'bg-gradient-to-r from-blue-200 via-blue-100 to-white bg-clip-text text-transparent' : 'text-white'}`}
                 >
                   {line}
                 </motion.span>
@@ -189,13 +203,13 @@ export default function Hero({ onOpenAuth }) {
                   <div className="text-[10px] uppercase tracking-[0.28em] text-white/55">Field overview</div>
                   <div className="mt-2 font-display text-[26px] font-bold text-white">North Rift</div>
                 </div>
-                <div className="inline-flex items-center gap-2 rounded-full border border-emerald-400/30 bg-emerald-500/10 px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.18em] text-emerald-200"><Activity className="h-3.5 w-3.5" /> Live</div>
+                <div className="inline-flex items-center gap-2 rounded-full border border-blue-300/30 bg-blue-500/10 px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.18em] text-blue-100"><Activity className="h-3.5 w-3.5" /> Live</div>
               </div>
 
               <div className="mt-5 rounded-[1.5rem] border border-white/10 bg-[radial-gradient(circle_at_top,_rgba(96,165,250,0.2),_transparent_32%),linear-gradient(180deg,_rgba(17,24,39,0.8),_rgba(15,23,42,0.4))] p-4">
                 <div className="terrain-visual relative h-[280px] overflow-hidden rounded-[1.25rem] border border-white/10">
                   <motion.div style={{ x: pointer.x * 18, y: pointer.y * 14 }} className="absolute inset-0 bg-[radial-gradient(circle_at_center,_rgba(16,185,129,0.2),_transparent_52%)]" />
-                  <motion.div style={{ x: pointer.x * 12, y: pointer.y * 10 }} className="absolute inset-0 opacity-80" style={{ backgroundImage: 'linear-gradient(rgba(255,255,255,0.1) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.1) 1px, transparent 1px)', backgroundSize: '28px 28px' }} />
+                  <motion.div style={{ x: pointer.x * 12, y: pointer.y * 10, backgroundImage: 'linear-gradient(rgba(255,255,255,0.1) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.1) 1px, transparent 1px)', backgroundSize: '28px 28px' }} className="absolute inset-0 opacity-80" />
                   <div className="absolute inset-x-0 bottom-0 h-28 bg-gradient-to-t from-emerald-500/25 to-transparent" />
                   <div className="absolute left-6 top-16 h-20 w-20 rounded-full border border-blue-200/40 bg-blue-400/10 blur-sm" />
                   <div className="absolute right-10 top-12 h-24 w-24 rounded-full border border-emerald-200/40 bg-emerald-400/10 blur-sm" />

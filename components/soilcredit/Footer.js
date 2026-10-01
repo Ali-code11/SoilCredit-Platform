@@ -28,7 +28,7 @@ export default function Footer() {
 
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-8 pb-10 border-b border-slate-200">
           <div className="col-span-2 sm:col-span-1">
-            <div className="flex items-center gap-2 mb-3"><div className="h-8 w-8 rounded-lg bg-gradient-to-br from-blue-500 to-emerald-500 flex items-center justify-center"><Leaf className="h-4 w-4 text-white" strokeWidth={2.5} /></div><span className="font-display font-bold text-lg text-gradient-blue">SoilCredit</span></div>
+            <div className="flex items-center gap-2 mb-3"><div className="h-8 w-8 rounded-lg bg-gradient-to-br from-blue-800 to-blue-600 flex items-center justify-center"><Leaf className="h-4 w-4 text-white" strokeWidth={2.5} /></div><span className="font-display font-bold text-lg text-gradient-blue">SoilCredit</span></div>
             <p className="text-[13px] text-slate-500 leading-relaxed mb-3">{t('footer.tagline')}</p>
             <div className="flex gap-1.5">
   {[

@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Sparkles, Loader2, ArrowRight, Leaf, Coins, TrendingUp, CheckCircle2 } from 'lucide-react';
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
 import { useLang } from '@/lib/providers';
+import SectionBackdrop from '@/components/soilcredit/SectionBackdrop';
 
 function AnimatedNumber({ value, decimals = 0, prefix = '', suffix = '' }) {
   const [display, setDisplay] = useState(0);
@@ -80,6 +81,7 @@ export default function Calculator() {
 
   return (
     <section id="calculator" className="relative py-24 md:py-32 bg-gradient-to-b from-slate-50/60 to-white">
+      <SectionBackdrop Icon={Leaf} />
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <motion.div initial={{ opacity: 0, y: 24 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true, margin: '-100px' }} transition={{ duration: 0.6 }} className="text-center max-w-3xl mx-auto mb-12">
           <span className="chip mb-4">{t('calc.tag')}</span>
@@ -89,7 +91,7 @@ export default function Calculator() {
 
         <div className="grid lg:grid-cols-5 gap-5">
           <div className="lg:col-span-2 card-soft p-6 md:p-7">
-            <div className="flex items-center gap-2 mb-6"><div className="h-8 w-8 rounded-lg bg-gradient-to-br from-blue-500 to-emerald-500 flex items-center justify-center"><Sparkles className="h-4 w-4 text-white" /></div><span className="font-display font-semibold text-lg text-slate-900">Parameters</span></div>
+            <div className="flex items-center gap-2 mb-6"><div className="h-8 w-8 rounded-lg bg-gradient-to-br from-blue-800 to-blue-600 flex items-center justify-center"><Sparkles className="h-4 w-4 text-white" /></div><span className="font-display font-semibold text-lg text-slate-900">Parameters</span></div>
             <div className="space-y-5">
               <div>
                 <div className="flex items-center justify-between mb-2"><label className="text-[13px] font-medium text-slate-600">{t('calc.area')}</label><span className="text-[15px] font-semibold text-blue-600 tabular-nums">{form.area.toLocaleString()} ha</span></div>
@@ -150,7 +152,7 @@ function ResultCard({ icon: Icon, label, value, sub, highlight, prefix = '', suf
   return (
     <motion.div whileHover={{ y: -4, scale: 1.01 }} transition={{ duration: 0.2 }} className={`rounded-2xl p-4 border ${highlight ? 'bg-gradient-to-br from-blue-50 to-emerald-50 border-blue-200' : 'bg-white border-slate-200'}`}>
       <div className="flex items-center gap-2 mb-2">
-        <div className={`h-7 w-7 rounded-lg flex items-center justify-center ${highlight ? 'bg-gradient-to-br from-blue-500 to-emerald-500 text-white' : 'bg-blue-50 text-blue-600 border border-blue-100'}`}><Icon className="h-3.5 w-3.5" /></div>
+        <div className={`h-7 w-7 rounded-lg flex items-center justify-center ${highlight ? 'bg-gradient-to-br from-blue-800 to-blue-600 text-white' : 'bg-blue-50 text-blue-600 border border-blue-100'}`}><Icon className="h-3.5 w-3.5" /></div>
         <span className="text-[11.5px] font-medium text-slate-600">{label}</span>
       </div>
       <div className="font-display font-bold text-[22px] leading-tight text-slate-900">

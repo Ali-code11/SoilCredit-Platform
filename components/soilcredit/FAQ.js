@@ -21,7 +21,7 @@ export default function FAQ() {
               className={`rounded-2xl border transition ${open === i ? 'bg-white border-blue-200 shadow-md' : 'bg-white border-slate-200 hover:border-slate-300'}`}>
               <button onClick={() => setOpen(open === i ? -1 : i)} className="w-full flex items-start justify-between gap-4 px-5 py-4 text-left">
                 <span className="font-display font-semibold text-[15.5px] text-slate-900">{q}</span>
-                <motion.div animate={{ rotate: open === i ? 45 : 0 }} transition={{ duration: 0.25 }} className={`h-8 w-8 rounded-lg flex items-center justify-center shrink-0 ${open === i ? 'bg-gradient-to-br from-blue-500 to-emerald-500 text-white' : 'bg-slate-100 text-slate-500'}`}><Plus className="h-4 w-4" /></motion.div>
+                <motion.div animate={{ rotate: open === i ? 45 : 0 }} transition={{ duration: 0.25 }} className={`h-8 w-8 rounded-lg flex items-center justify-center shrink-0 ${open === i ? 'bg-gradient-to-br from-blue-800 to-blue-600 text-white' : 'bg-slate-100 text-slate-500'}`}><Plus className="h-4 w-4" /></motion.div>
               </button>
               <AnimatePresence initial={false}>
                 {open === i && (

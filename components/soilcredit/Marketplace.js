@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Search, MapPin, ShieldCheck, ArrowUpRight, Coins, Leaf } from 'lucide-react';
 import { useLang, useAuth } from '@/lib/providers';
+import SectionBackdrop from '@/components/soilcredit/SectionBackdrop';
 
 const marqueeItems = ['CARBON CREDITS', 'LAND', 'AI', 'SOIL', 'MARKETPLACE', 'REPORTING'];
 
@@ -32,12 +33,15 @@ export default function Marketplace({ onOpenAuth }) {
 
   return (
     <section id="marketplace" className="relative py-24 md:py-32 bg-white">
+      <SectionBackdrop Icon={Coins} />
       <div className="overflow-hidden border-y border-slate-200 bg-slate-50/70">
         <div className="hero-marquee hero-marquee-left">
           <div className="hero-marquee-track">
-            {[...marqueeItems, ...marqueeItems].map((item, idx) => (
-              <span key={`${item}-${idx}`} className="hero-marquee-item">{item}</span>
-            ))}
+              {[0, 1].map((copy) => (
+                <div key={copy} className="hero-marquee-group" aria-hidden={copy === 1}>
+                  {marqueeItems.map((item, idx) => <span key={`${item}-${idx}`} className="hero-marquee-item">{item}</span>)}
+                </div>
+              ))}
           </div>
         </div>
       </div>
@@ -68,7 +72,7 @@ export default function Marketplace({ onOpenAuth }) {
               {filtered.map((l, i) => (
                 <motion.div key={l.id} layout initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} transition={{ duration: 0.35, delay: (i % 6) * 0.04 }} whileHover={{ y: -6, scale: 1.01 }} className="card-soft group relative overflow-hidden">
                   <div className="relative h-32 overflow-hidden">
-                    <motion.div whileHover={{ scale: 1.08 }} transition={{ duration: 0.5 }} className="absolute inset-0 bg-gradient-to-br from-blue-400 via-emerald-400 to-emerald-500" />
+                    <motion.div whileHover={{ scale: 1.08 }} transition={{ duration: 0.5 }} className="absolute inset-0 bg-gradient-to-br from-blue-800 via-blue-600 to-blue-500" />
                     <div className="absolute inset-0 grid-bg-light opacity-30" />
                     <div className="absolute top-3 left-3 chip !bg-white/95 !border-white"><ShieldCheck className="h-3 w-3" /> Verified</div>
                     <div className="absolute top-3 right-3 rounded-full bg-white/95 px-2.5 py-1 border border-white text-[11px] font-semibold text-blue-600">{t('market.esg')} 94+</div>
@@ -82,7 +86,7 @@ export default function Marketplace({ onOpenAuth }) {
                     </div>
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2 min-w-0">
-                        <div className="h-7 w-7 rounded-full bg-gradient-to-br from-blue-500 to-emerald-500 flex items-center justify-center text-[10px] font-bold text-white shrink-0">{(l.ownerName || '?').split(' ').map(w => w[0]).slice(0,2).join('')}</div>
+                        <div className="h-7 w-7 rounded-full bg-gradient-to-br from-blue-800 to-blue-600 flex items-center justify-center text-[10px] font-bold text-white shrink-0">{(l.ownerName || '?').split(' ').map(w => w[0]).slice(0,2).join('')}</div>
                         <span className="text-[12px] text-slate-500 truncate">{l.ownerName}</span>
                       </div>
                       <button onClick={() => buy(l)} disabled={buying === l.id || (l.creditsAvailable || 0) <= 0} className="btn-primary inline-flex items-center gap-1 rounded-lg px-3.5 py-2 text-[12px] font-semibold disabled:opacity-60">

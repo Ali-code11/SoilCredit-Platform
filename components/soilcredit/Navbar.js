@@ -1,20 +1,33 @@
 'use client';
 import { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Leaf, Menu, X, Globe, LogOut, LayoutDashboard, ChevronDown } from 'lucide-react';
+import { Leaf, Menu, X, Globe, LogOut, LayoutDashboard, ChevronDown, Moon, Sun } from 'lucide-react';
 import { useLang, useAuth } from '@/lib/providers';
+import { useTheme } from 'next-themes';
 import Link from 'next/link';
 import { useRouter, usePathname } from 'next/navigation';
 
 export default function Navbar({ onOpenAuth, onOpenTeam }) {
   const { lang, setLang, t } = useLang();
   const { user, logout } = useAuth();
+  const { resolvedTheme, setTheme } = useTheme();
   const router = useRouter();
   const pathname = usePathname();
   const [scrolled, setScrolled] = useState(false);
   const [navVisible, setNavVisible] = useState(true);
   const [open, setOpen] = useState(false);
   const [menu, setMenu] = useState(false);
+  const [themeReady, setThemeReady] = useState(false);
+
+  useEffect(() => setThemeReady(true), []);
+
+  const toggleTheme = () => {
+    const nextTheme = document.documentElement.classList.contains('dark') ? 'light' : 'dark';
+    setTheme(nextTheme);
+    try { window.localStorage.setItem('soilcredit-theme', nextTheme); } catch {}
+    document.documentElement.classList.toggle('dark', nextTheme === 'dark');
+    document.documentElement.classList.toggle('light', nextTheme === 'light');
+  };
 
   useEffect(() => {
     let lastY = window.scrollY;
@@ -66,7 +79,7 @@ export default function Navbar({ onOpenAuth, onOpenTeam }) {
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16 md:h-[72px]">
             <Link href="/" className="flex items-center gap-2 group">
-              <div className="h-9 w-9 rounded-xl bg-gradient-to-br from-blue-500 to-emerald-500 flex items-center justify-center shadow-lg shadow-blue-500/20">
+              <div className="h-9 w-9 rounded-xl bg-gradient-to-br from-blue-800 to-blue-600 flex items-center justify-center shadow-lg shadow-blue-500/20">
                 <Leaf className="h-5 w-5 text-white" strokeWidth={2.5} />
               </div>
               <span className={`font-display font-bold text-[22px] ${isHomeDark ? 'text-white' : 'text-gradient-blue'}`}>SoilCredit</span>
@@ -79,6 +92,15 @@ export default function Navbar({ onOpenAuth, onOpenTeam }) {
             </nav>
 
             <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={toggleTheme}
+                className={`inline-flex h-9 w-9 items-center justify-center rounded-xl border transition ${isHomeDark ? 'border-white/15 bg-white/5 text-white hover:bg-white/10' : 'border-slate-200 bg-white text-slate-600 hover:border-blue-300 hover:text-blue-700'}`}
+                aria-label={`Switch to ${resolvedTheme === 'dark' ? 'light' : 'dark'} mode`}
+                title={`Switch to ${resolvedTheme === 'dark' ? 'light' : 'dark'} mode`}
+              >
+                {themeReady && resolvedTheme === 'dark' ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+              </button>
               {/* Language switch */}
               <div className={`hidden sm:flex items-center gap-1 rounded-xl border px-2 py-1.5 ${isHomeDark ? 'border-white/15 bg-white/5' : 'border-slate-200 bg-white'}`}>
                 <Globe className={`h-3.5 w-3.5 ${isHomeDark ? 'text-white/70' : 'text-slate-500'}`} />
@@ -90,7 +112,7 @@ export default function Navbar({ onOpenAuth, onOpenTeam }) {
               {user ? (
                 <div className="relative">
                   <button onClick={() => setMenu(m => !m)} className="hidden sm:inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-[13px] font-medium text-slate-700 hover:border-blue-200 transition">
-                    <span className="h-6 w-6 rounded-full bg-gradient-to-br from-blue-500 to-emerald-500 flex items-center justify-center text-white text-[10px] font-bold">{(user.name||'?').slice(0,2).toUpperCase()}</span>
+                    <span className="h-6 w-6 rounded-full bg-gradient-to-br from-blue-800 to-blue-600 flex items-center justify-center text-white text-[10px] font-bold">{(user.name||'?').slice(0,2).toUpperCase()}</span>
                     <span className="max-w-[110px] truncate">{user.name}</span>
                     <ChevronDown className="h-3.5 w-3.5" />
                   </button>
@@ -130,7 +152,7 @@ export default function Navbar({ onOpenAuth, onOpenTeam }) {
             <motion.div initial={{ x: '100%' }} animate={{ x: 0 }} exit={{ x: '100%' }} transition={{ type: 'spring', damping: 30, stiffness: 260 }}
               className="absolute right-0 top-0 h-full w-[86%] max-w-sm bg-white p-6">
               <div className="flex items-center justify-between mb-8">
-                <div className="flex items-center gap-2"><div className="h-8 w-8 rounded-lg bg-gradient-to-br from-blue-500 to-emerald-500 flex items-center justify-center"><Leaf className="h-4 w-4 text-white" strokeWidth={2.5} /></div><span className="font-display font-bold text-lg text-gradient-blue">SoilCredit</span></div>
+                <div className="flex items-center gap-2"><div className="h-8 w-8 rounded-lg bg-gradient-to-br from-blue-800 to-blue-600 flex items-center justify-center"><Leaf className="h-4 w-4 text-white" strokeWidth={2.5} /></div><span className="font-display font-bold text-lg text-gradient-blue">SoilCredit</span></div>
                 <button onClick={() => setOpen(false)} className="p-2 rounded-lg border border-slate-200"><X className="h-5 w-5" /></button>
               </div>
               <div className="flex flex-col gap-1">
@@ -141,6 +163,14 @@ export default function Navbar({ onOpenAuth, onOpenTeam }) {
                   <button onClick={() => setLang('en')} className={`text-[12px] font-semibold px-2 py-1 rounded ${lang==='en' ? 'bg-blue-50 text-blue-600' : 'text-slate-500'}`}>EN</button>
                   <button onClick={() => setLang('az')} className={`text-[12px] font-semibold px-2 py-1 rounded ${lang==='az' ? 'bg-blue-50 text-blue-600' : 'text-slate-500'}`}>AZ</button>
                 </div>
+                <button
+                  type="button"
+                  onClick={toggleTheme}
+                  className="mx-4 mt-2 inline-flex items-center gap-2 rounded-xl border border-slate-200 px-4 py-3 text-left text-slate-700"
+                >
+                  {themeReady && resolvedTheme === 'dark' ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+                  {resolvedTheme === 'dark' ? 'Light mode' : 'Dark mode'}
+                </button>
                 <div className="mt-4 pt-4 border-t border-slate-100 flex flex-col gap-2">
                   {user ? (<>
                     <Link href="/dashboard" onClick={() => setOpen(false)} className="w-full px-4 py-3 rounded-xl border border-slate-200 text-slate-700 text-center">{t('nav.dashboard')}</Link>

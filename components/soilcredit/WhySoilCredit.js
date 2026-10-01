@@ -1,7 +1,8 @@
 'use client';
 import { motion } from 'framer-motion';
-import { Satellite, ShieldCheck, Store, Landmark } from 'lucide-react';
+import { Satellite, ShieldCheck, Store, Landmark, Mountain } from 'lucide-react';
 import { useLang } from '@/lib/providers';
+import SectionBackdrop from '@/components/soilcredit/SectionBackdrop';
 
 const ICONS = [Satellite, ShieldCheck, Store, Landmark];
 
@@ -10,6 +11,7 @@ export default function WhySoilCredit() {
   const items = t('why.items') || [];
   return (
     <section id="why" className="relative py-24 md:py-32 bg-white">
+      <SectionBackdrop Icon={Mountain} />
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <motion.div initial={{ opacity: 0, y: 24 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true, margin: '-100px' }} transition={{ duration: 0.6 }} className="text-center max-w-3xl mx-auto mb-14">
           <span className="chip mb-4">{t('why.tag')}</span>
@@ -22,7 +24,7 @@ export default function WhySoilCredit() {
             return (
               <motion.div key={i} initial={{ opacity: 0, y: 24 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.5, delay: i * 0.06 }}
                 className="card-soft p-6">
-                <div className="h-11 w-11 rounded-xl bg-gradient-to-br from-blue-500 to-emerald-500 flex items-center justify-center mb-4 shadow-md shadow-blue-500/20">
+                <div className="h-11 w-11 rounded-xl bg-gradient-to-br from-blue-800 to-blue-600 flex items-center justify-center mb-4 shadow-md shadow-blue-500/20">
                   <Icon className="h-5 w-5 text-white" strokeWidth={2.2} />
                 </div>
                 <div className="font-display font-semibold text-[17px] tracking-tight mb-1.5 text-slate-900">{it.t}</div>
