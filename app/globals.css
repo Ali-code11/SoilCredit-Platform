@@ -246,7 +246,6 @@ body {
   opacity: 0.38;
 }
 
-.hero-journey-leaf,
 .hero-journey-blocks,
 .hero-journey-satellite {
   position: absolute;
@@ -274,35 +273,6 @@ body {
 
 .section-backdrop svg { width: 100%; height: 100%; opacity: 0.035; }
 .section-backdrop + div { position: relative; z-index: 1; }
-
-.scroll-leaf {
-  position: fixed;
-  z-index: 35;
-  top: 0;
-  left: 0;
-  width: 24px;
-  height: 24px;
-  color: #1e40af;
-  pointer-events: none;
-  will-change: transform, opacity;
-}
-
-.scroll-leaf-mark {
-  width: 100%;
-  height: 100%;
-  overflow: visible;
-  stroke: currentColor;
-  stroke-width: 1.45;
-  stroke-linecap: round;
-  stroke-linejoin: round;
-  transform-origin: center;
-  animation: leaf-drift 5.8s ease-in-out infinite;
-}
-
-@keyframes leaf-drift {
-  0%, 100% { transform: translate3d(0, 0, 0) rotate(-3deg); }
-  50% { transform: translate3d(1px, -3px, 0) rotate(3deg); }
-}
 
 .dark body {
   color-scheme: dark;
@@ -344,7 +314,6 @@ body {
 .dark .hero-marquee { background: rgba(10, 19, 36, 0.78); border-color: rgba(148, 163, 184, 0.16); }
 .dark .hero-marquee-item { color: rgba(226, 232, 240, 0.72); }
 .dark .section-backdrop { color: #93b4f6; }
-.dark .scroll-leaf { color: #bfdbfe; }
 .dark [class~="bg-white/85"] { background-color: rgba(13, 23, 42, 0.88) !important; }
 .dark .shadow-xl,
 .dark .shadow-2xl { --tw-shadow-color: rgba(0, 0, 0, 0.45); }
@@ -353,11 +322,10 @@ body {
 .dark textarea { color-scheme: dark; }
 
 @media (max-width: 640px) {
-  .hero-journey { top: 8%; right: -30%; width: 95vw; height: 48vw; opacity: 0.65; }
+  .hero-journey { top: 20%; right: -30%; width: 95vw; height: 48vw; opacity: 0.65; }
   .section-backdrop { right: -5rem; width: 72vw; height: 72vw; }
   .hero-marquee-group { gap: 1.25rem; padding-right: 1.25rem; }
   .hero-marquee-item { font-size: 10px; letter-spacing: 0.12em; }
-  .scroll-leaf { width: 21px; height: 21px; }
 }
 
 @media (min-width: 768px) {
@@ -370,7 +338,6 @@ body {
 @media (prefers-reduced-motion: reduce) {
   html { scroll-behavior: auto; }
   .hero-journey { display: none; }
-  .scroll-leaf-mark { animation: none !important; }
   .hero-marquee-track { animation: none !important; }
   *, *::before, *::after {
     animation-duration: 0.01ms !important;

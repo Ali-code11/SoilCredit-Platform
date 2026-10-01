@@ -85,7 +85,6 @@ export default function Hero({ onOpenAuth }) {
       {!reducedMotion && <div className="hero-journey" aria-hidden="true">
         <svg viewBox="0 0 900 360" className="hero-journey-lines" fill="none">
           <path d="M74 78 C170 130 225 198 330 200 S500 198 610 180 S755 142 835 100" />
-          <path d="M155 131 C166 105 175 83 183 58" />
           <path d="M384 200 L418 166 L452 200 L418 234 Z M418 166 V234 M384 200 H452" />
           <path d="M688 155 L735 128 M735 128 L766 143 M735 128 L741 96 M688 155 L681 181 M688 155 L712 180" />
           <path d="M659 144 L689 162 M718 111 L749 129" />

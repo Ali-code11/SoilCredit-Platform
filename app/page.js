@@ -11,7 +11,6 @@ import Marketplace from '@/components/soilcredit/Marketplace';
 import Team from '@/components/soilcredit/Team';
 import FAQ from '@/components/soilcredit/FAQ';
 import Footer from '@/components/soilcredit/Footer';
-import ScrollLeaf from '@/components/soilcredit/ScrollLeaf';
 
 function App() {
   const [auth, setAuth] = useState({ open: false, mode: 'signup' });
@@ -47,7 +46,6 @@ function App() {
     <main className="site-shell relative bg-white text-slate-900">
       <Navbar onOpenAuth={openAuth} onOpenTeam={openTeam} />
       <Hero onOpenAuth={openAuth} />
-      <ScrollLeaf />
 
       <div className="overflow-hidden border-y border-slate-200/80 bg-white">
         <div className="hero-marquee hero-marquee-left">
