@@ -80,7 +80,7 @@ export default function Hero({ onOpenAuth }) {
   return (
     <section id="home" className="hero-section relative overflow-hidden pt-28 pb-20 md:pt-36 md:pb-28">
       <motion.div style={{ y: bgY }} className="absolute inset-0 topographic-surface opacity-60" />
-      <motion.div style={{ y: midY }} className="absolute inset-0 bg-[radial-gradient(circle_at_top,_rgba(14,165,233,0.18),_transparent_32%),radial-gradient(circle_at_bottom_right,_rgba(34,197,94,0.15),_transparent_30%)]" />
+      <motion.div style={{ y: midY }} className="absolute inset-0 bg-[radial-gradient(circle_at_top,_rgba(14,165,233,0.24),_transparent_32%),radial-gradient(circle_at_bottom_right,_rgba(34,197,94,0.2),_transparent_30%)]" />
       <motion.div style={{ y: fgY }} className="hero-top-fade absolute inset-x-0 top-0 h-32" />
       {!reducedMotion && <div className="hero-journey" aria-hidden="true">
         <svg viewBox="0 0 900 360" className="hero-journey-lines" fill="none">
@@ -93,10 +93,10 @@ export default function Hero({ onOpenAuth }) {
         <motion.div className="hero-journey-blocks" style={{ opacity: chainOpacity }}><Blocks /></motion.div>
         <motion.div className="hero-journey-satellite" style={{ opacity: satelliteOpacity }}><Satellite /></motion.div>
       </div>}
-      <motion.div style={{ x: pointer.x * 18, y: pointer.y * 18 }} className="absolute left-1/2 top-1/2 h-[32rem] w-[32rem] -translate-x-1/2 -translate-y-1/2 rounded-full border border-slate-900/10 dark:border-white/10" />
-      <motion.div style={{ x: pointer.x * 24, y: pointer.y * 24 }} className="absolute left-1/2 top-1/2 h-[28rem] w-[28rem] -translate-x-1/2 -translate-y-1/2 rounded-full border border-emerald-700/10 dark:border-emerald-300/10" />
-      <motion.div style={{ x: pointer.x * 18, y: pointer.y * 12 }} className="absolute -left-20 bottom-8 h-72 w-72 rounded-full bg-blue-500/10 blur-[100px]" />
-      <motion.div style={{ x: pointer.x * -18, y: pointer.y * -12 }} className="absolute -right-16 top-20 h-80 w-80 rounded-full bg-emerald-500/10 blur-[110px]" />
+      <motion.div style={{ x: pointer.x * 18, y: pointer.y * 18 }} className="absolute left-[125%] top-[110%] h-[32rem] w-[32rem] -translate-x-1/2 -translate-y-1/2 rounded-full border border-slate-900/18 dark:border-white/15 lg:left-[115%] lg:top-[82%]" />
+      <motion.div style={{ x: pointer.x * 24, y: pointer.y * 24 }} className="absolute left-[125%] top-[110%] h-[28rem] w-[28rem] -translate-x-1/2 -translate-y-1/2 rounded-full border border-emerald-700/16 dark:border-emerald-300/14 lg:left-[115%] lg:top-[82%]" />
+      <motion.div style={{ x: pointer.x * 18, y: pointer.y * 12 }} className="absolute -left-20 bottom-8 h-72 w-72 rounded-full bg-blue-500/15 blur-[100px] dark:bg-blue-500/10" />
+      <motion.div style={{ x: pointer.x * -18, y: pointer.y * -12 }} className="absolute -right-16 top-20 h-80 w-80 rounded-full bg-emerald-500/15 blur-[110px] dark:bg-emerald-500/10" />
 
       {!reducedMotion && floatingNodes.map((node, index) => (
         <motion.div
@@ -137,9 +137,9 @@ export default function Hero({ onOpenAuth }) {
           <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/10 px-2 py-1 text-[9px] font-bold text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-200"><Sparkles className="h-3 w-3" /> {t('hero.new')}</span>
         </motion.div>
 
-        <div className="mt-8 grid gap-8 lg:grid-cols-[1.2fr_0.8fr] lg:items-center">
-          <div className="text-center lg:text-left">
-            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.7 }} className="mb-5 flex items-center justify-center gap-2 lg:justify-start">
+        <div className="mt-8 flex justify-center">
+          <div className="w-full max-w-4xl text-center">
+            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.7 }} className="mb-5 flex items-center justify-center gap-2">
               <div className="flex h-10 w-10 items-center justify-center rounded-2xl border border-slate-900/10 bg-white/70 backdrop-blur-sm dark:border-white/10 dark:bg-white/5">
                 <Orbit className="h-5 w-5 text-blue-700 dark:text-blue-200" />
               </div>
@@ -160,11 +160,11 @@ export default function Hero({ onOpenAuth }) {
               ))}
             </motion.h1>
 
-            <motion.p initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.28, duration: 0.6 }} className="mx-auto mt-6 max-w-2xl text-[16px] leading-relaxed text-slate-600 dark:text-slate-300 lg:mx-0">
+            <motion.p initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.28, duration: 0.6 }} className="mx-auto mt-6 max-w-2xl text-[16px] leading-relaxed text-slate-600 dark:text-slate-300">
               {t('hero.subtitle')}
             </motion.p>
 
-            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.45, duration: 0.6 }} className="mt-9 flex flex-wrap items-center justify-center gap-3 lg:justify-start">
+            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.45, duration: 0.6 }} className="mt-9 flex flex-wrap items-center justify-center gap-3">
               <motion.button
                 onClick={() => onOpenAuth?.('signup')}
                 onMouseMove={handleMagneticMove}
@@ -187,11 +187,6 @@ export default function Hero({ onOpenAuth }) {
               </a>
             </motion.div>
 
-            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.7 }} className="mt-10 flex flex-wrap items-center justify-center gap-x-6 gap-y-3 text-[11px] uppercase tracking-[0.2em] text-slate-600 dark:text-slate-300 lg:justify-start">
-              <span className="inline-flex items-center gap-2"><span className="h-2 w-2 rounded-full bg-emerald-400 dot-live" /> Verra VM0042</span>
-              <span className="inline-flex items-center gap-2"><span className="h-2 w-2 rounded-full bg-blue-400" /> Gold Standard</span>
-              <span className="inline-flex items-center gap-2"><span className="h-2 w-2 rounded-full bg-emerald-400" /> ISO 14064-2</span>
-            </motion.div>
           </div>
 
         </div>
