@@ -233,7 +233,10 @@ async function handle(req, params) {
       }
       if (!user.emailVerificationExpiresAt || new Date(user.emailVerificationExpiresAt) < new Date()) return err('Invalid or expired verification code', 400);
       await db.collection('users').updateOne({ id: user.id }, { $set: { emailVerified: true }, $unset: { emailVerificationCodeHash: '', emailVerificationToken: '', emailVerificationExpiresAt: '', emailVerificationLastSentAt: '', emailVerificationAttempts: '' } });
-      return ok({ message: 'Email verified successfully' });
+      const token = uuidv4();
+      await db.collection('sessions').insertOne({ token, userId: user.id, createdAt: new Date().toISOString() });
+      const { hash: _h, salt: _s, emailVerificationCodeHash: _vc, emailVerificationExpiresAt: _ve, emailVerificationLastSentAt: _vs, emailVerificationAttempts: _va, emailVerificationToken: _vt, _id, ...pub } = user;
+      return ok({ message: 'Email verified successfully', token, user: { ...pub, emailVerified: true } });
     }
 
     if (route === 'auth/resend-verification' && method === 'POST') {

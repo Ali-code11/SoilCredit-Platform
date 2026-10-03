@@ -50,12 +50,39 @@ body {
 
 .topographic-surface {
   background-image:
+    linear-gradient(rgba(15, 23, 42, 0.035) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(15, 23, 42, 0.03) 1px, transparent 1px),
+    radial-gradient(circle at 50% 20%, rgba(37, 99, 235, 0.1), transparent 32%),
+    linear-gradient(180deg, rgba(248, 250, 252, 0.35), rgba(248, 250, 252, 0.08));
+  background-size: 32px 32px, 32px 32px, 100% 100%, 100% 100%;
+  mask-image: radial-gradient(ellipse at center, black 20%, transparent 100%);
+}
+
+.dark .topographic-surface {
+  background-image:
     linear-gradient(rgba(255, 255, 255, 0.05) 1px, transparent 1px),
     linear-gradient(90deg, rgba(255, 255, 255, 0.04) 1px, transparent 1px),
     radial-gradient(circle at 50% 20%, rgba(96, 140, 255, 0.22), transparent 32%),
     linear-gradient(180deg, rgba(2, 6, 23, 0.38), rgba(2, 6, 23, 0.08));
-  background-size: 32px 32px, 32px 32px, 100% 100%, 100% 100%;
-  mask-image: radial-gradient(ellipse at center, black 20%, transparent 100%);
+}
+
+.hero-section {
+  background-color: #f8fafc;
+  color: #0f172a;
+  transition: background-color 240ms ease, color 240ms ease;
+}
+
+.dark .hero-section {
+  background-color: #07142f;
+  color: #fff;
+}
+
+.hero-top-fade {
+  background: linear-gradient(180deg, #f8fafc, transparent);
+}
+
+.dark .hero-top-fade {
+  background: linear-gradient(180deg, #07142f, transparent);
 }
 
 .terrain-visual {
@@ -88,9 +115,9 @@ body {
   justify-content: center;
   min-width: 92px;
   border-radius: 9999px;
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  background: rgba(255, 255, 255, 0.04);
-  color: rgba(255, 255, 255, 0.82);
+  border: 1px solid rgba(15, 23, 42, 0.12);
+  background: rgba(255, 255, 255, 0.78);
+  color: rgba(15, 23, 42, 0.82);
   padding: 0.7rem 1rem;
   font-size: 10px;
   font-weight: 700;
@@ -105,7 +132,7 @@ body {
   right: -18px;
   top: 50%;
   transform: translateY(-50%);
-  color: rgba(255, 255, 255, 0.38);
+  color: rgba(15, 23, 42, 0.38);
   font-size: 14px;
 }
 
@@ -231,7 +258,7 @@ body {
   right: 2%;
   width: min(58vw, 850px);
   height: min(34vw, 340px);
-  color: rgba(191, 219, 254, 0.48);
+  color: rgba(30, 64, 175, 0.32);
   pointer-events: none;
 }
 
@@ -251,6 +278,25 @@ body {
   position: absolute;
   display: grid;
   place-items: center;
+  color: rgba(30, 64, 175, 0.48);
+}
+
+.dark .flow-node {
+  border-color: rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.04);
+  color: rgba(255, 255, 255, 0.82);
+}
+
+.dark .flow-node:not(:last-child)::after {
+  color: rgba(255, 255, 255, 0.38);
+}
+
+.dark .hero-journey {
+  color: rgba(191, 219, 254, 0.48);
+}
+
+.dark .hero-journey-blocks,
+.dark .hero-journey-satellite {
   color: rgba(219, 234, 254, 0.62);
 }
 

@@ -2,8 +2,10 @@
 
 import { useEffect, useState } from 'react';
 import { CheckCircle2, Leaf, Loader2, MailCheck } from 'lucide-react';
+import { useAuth } from '@/lib/providers';
 
 export default function VerifyEmailPage() {
+  const { login } = useAuth();
   const [email, setEmail] = useState('');
   const [code, setCode] = useState('');
   const [cooldown, setCooldown] = useState(0);
@@ -29,7 +31,12 @@ export default function VerifyEmailPage() {
       const response = await fetch('/api/auth/verify-email', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email, code }) });
       const data = await response.json();
       if (!data.ok) setError(data.error || 'Verification failed');
-      else { setVerified(true); setMessage('Email verified successfully. You can now sign in.'); }
+      else if (data.token && data.user) {
+        login(data.token, data.user);
+        setVerified(true);
+        setMessage('Email verified successfully. Redirecting to your dashboard…');
+        window.location.href = '/dashboard';
+      } else setError('Email verified, but automatic sign-in failed. Please sign in.');
     } catch { setError('Unable to reach the server. Please try again.'); }
     finally { setLoading(false); }
   };

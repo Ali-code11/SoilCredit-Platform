@@ -1,8 +1,32 @@
 'use client';
+import dynamic from 'next/dynamic';
 import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
-import { ShoppingCart, MapPin, Coins, TrendingUp, Loader2, Search, Building2 } from 'lucide-react';
+import { ShoppingCart, MapPin, Coins, TrendingUp, Loader2, Search, Building2, Eye, Image as ImageIcon, ArrowUpRight } from 'lucide-react';
 import { useAuth, useLang } from '@/lib/providers';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+
+const LandLocationMap = dynamic(async () => {
+  const Leaflet = (await import('leaflet')).default;
+  const { MapContainer, Marker, Popup, TileLayer } = await import('react-leaflet');
+  const markerIcon = Leaflet.divIcon({
+    className: 'soilcredit-map-pin',
+    html: '<span style="display:block;width:16px;height:16px;border-radius:9999px;border:3px solid white;background:#2563eb;box-shadow:0 8px 18px rgba(37,99,235,0.35)"></span>',
+    iconSize: [16, 16],
+    iconAnchor: [8, 8],
+    popupAnchor: [0, -10],
+  });
+
+  return function LandLocationMapView({ coordinates, name }) {
+    const position = [Number(coordinates.latitude), Number(coordinates.longitude)];
+    return (
+      <MapContainer key={position.join(',')} center={position} zoom={13} scrollWheelZoom={false} className="h-56 w-full overflow-hidden rounded-lg border border-slate-200">
+        <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" attribution="&copy; OpenStreetMap contributors" />
+        <Marker position={position} icon={markerIcon}><Popup>{name}</Popup></Marker>
+      </MapContainer>
+    );
+  };
+}, { ssr: false, loading: () => <div className="h-56 w-full animate-pulse rounded-lg bg-slate-100" /> });
 
 export default function CompanyDashboard() {
   const { apiFetch } = useAuth(); const { t } = useLang();
@@ -12,6 +36,7 @@ export default function CompanyDashboard() {
   const [loading, setLoading] = useState(true);
   const [q, setQ] = useState('');
   const [buying, setBuying] = useState(null);
+  const [selectedLand, setSelectedLand] = useState(null);
   const [msg, setMsg] = useState('');
   const [qty, setQty] = useState({});
 
@@ -72,6 +97,9 @@ export default function CompanyDashboard() {
                 <motion.div key={l.id} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} className="card-soft p-5 flex flex-col">
                   <div className="font-display font-semibold text-[16.5px] text-slate-900 mb-0.5">{l.name}</div>
                   <div className="text-[12px] text-slate-500 flex items-center gap-1 mb-3"><MapPin className="h-3 w-3" /> {l.location || '—'} · {l.area} ha</div>
+                  <button type="button" onClick={() => setSelectedLand(l)} className="mb-3 inline-flex items-center gap-1.5 self-start text-[12px] font-semibold text-blue-700 hover:text-blue-900">
+                    <Eye className="h-3.5 w-3.5" /> {t('market.view')}
+                  </button>
                   <div className="grid grid-cols-2 gap-2 py-3 border-y border-slate-100 mb-3">
                     <div><div className="text-[10px] uppercase tracking-widest text-slate-400 font-semibold">{t('market.credits')}</div><div className="font-display font-bold text-[16px] text-slate-900">{Math.round(l.creditsAvailable || 0).toLocaleString()}</div></div>
                     <div><div className="text-[10px] uppercase tracking-widest text-slate-400 font-semibold">{t('market.per')}</div><div className="font-display font-bold text-[16px] text-gradient-green">${(l.priceCredit || 42.8).toFixed(2)}</div></div>
@@ -106,8 +134,104 @@ export default function CompanyDashboard() {
           </div>
         )
       )}
+
+      <LandDetailsDialog land={selectedLand} onOpenChange={(open) => { if (!open) setSelectedLand(null); }} t={t} />
     </div>
   );
+}
+
+function LandDetailsDialog({ land, onOpenChange, t }) {
+  if (!land) return <Dialog open={false} onOpenChange={onOpenChange} />;
+
+  const coordinates = land.locationCoordinates || land.locationDetails?.coordinates || (
+    land.locationDetails?.latitude != null && land.locationDetails?.longitude != null ? land.locationDetails : null
+  );
+  const latitude = Number(coordinates?.latitude);
+  const longitude = Number(coordinates?.longitude);
+  const hasCoordinates = coordinates && Number.isFinite(latitude) && Number.isFinite(longitude);
+  const photos = Array.isArray(land.images) ? land.images.filter((image) => image?.dataUrl || image?.url) : [];
+  const estimate = land.estimate || {};
+  const mapUrl = hasCoordinates ? `https://www.openstreetmap.org/?mlat=${latitude}&mlon=${longitude}#map=15/${latitude}/${longitude}` : null;
+
+  return (
+    <Dialog open onOpenChange={onOpenChange}>
+      <DialogContent className="max-h-[90vh] max-w-5xl overflow-y-auto bg-white p-0">
+        <DialogHeader className="px-6 pb-4 pt-6 pr-14 text-left">
+          <DialogTitle className="font-display text-2xl text-slate-900">{land.name}</DialogTitle>
+          <DialogDescription className="flex items-center gap-1.5 text-slate-500">
+            <MapPin className="h-3.5 w-3.5 shrink-0" /> {land.location || [land.city, land.country].filter(Boolean).join(', ') || '—'} · {Number(land.area || 0).toLocaleString()} ha
+          </DialogDescription>
+        </DialogHeader>
+
+        <div className="grid gap-6 px-6 pb-6 lg:grid-cols-2">
+          <div className="space-y-5">
+            <section aria-label={t('market.photos')}>
+              <h3 className="mb-2 text-[12px] font-semibold uppercase tracking-wider text-slate-500">{t('market.photos')}</h3>
+              {photos.length ? (
+                <div className="grid grid-cols-2 gap-2">
+                  {photos.map((photo, index) => (
+                    <div key={photo.id || `${photo.name}-${index}`} className={`relative overflow-hidden rounded-lg bg-slate-100 ${index === 0 ? 'col-span-2 aspect-[16/9]' : 'aspect-[4/3]'}`}>
+                      <img src={photo.dataUrl || photo.url} alt={photo.name || `${land.name} photo ${index + 1}`} loading="lazy" className="h-full w-full object-cover" />
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="flex aspect-[16/9] items-center justify-center rounded-lg border border-dashed border-slate-200 bg-slate-50 text-slate-400">
+                  <span className="inline-flex items-center gap-2 text-[13px]"><ImageIcon className="h-4 w-4" /> {t('market.noPhotos')}</span>
+                </div>
+              )}
+            </section>
+
+            <section aria-label={t('dash.location')}>
+              <div className="mb-2 flex items-center justify-between gap-3">
+                <h3 className="text-[12px] font-semibold uppercase tracking-wider text-slate-500">{t('dash.location')}</h3>
+                {mapUrl && <a href={mapUrl} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-[12px] font-medium text-blue-700 hover:text-blue-900">{t('market.openMap')} <ArrowUpRight className="h-3 w-3" /></a>}
+              </div>
+              {hasCoordinates ? (
+                <>
+                  <LandLocationMap coordinates={{ latitude, longitude }} name={land.name} />
+                  <p className="mt-2 text-[11.5px] tabular-nums text-slate-500">{latitude.toFixed(5)}, {longitude.toFixed(5)}</p>
+                </>
+              ) : <p className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-4 text-[13px] text-slate-500">{land.location || t('market.noLocationCoordinates')}</p>}
+            </section>
+          </div>
+
+          <div className="space-y-5">
+            <section>
+              <h3 className="mb-2 text-[12px] font-semibold uppercase tracking-wider text-slate-500">{t('dash.description')}</h3>
+              <p className="whitespace-pre-wrap text-[13.5px] leading-relaxed text-slate-700">{land.description || t('market.noDescription')}</p>
+            </section>
+
+            <section>
+              <h3 className="mb-2 text-[12px] font-semibold uppercase tracking-wider text-slate-500">{t('market.landDetails')}</h3>
+              <dl className="divide-y divide-slate-100 border-y border-slate-100">
+                <DetailRow label={t('dash.area')} value={`${Number(land.area || 0).toLocaleString()} ha`} />
+                <DetailRow label={t('calc.soil')} value={t(`calc.soils.${land.soil}`)} />
+                <DetailRow label={t('calc.region')} value={t(`calc.regions.${land.region}`)} />
+                <DetailRow label={t('calc.forest')} value={t(`calc.forests.${land.forestType}`)} />
+                <DetailRow label={t('calc.vegetation')} value={t(`calc.vegs.${land.vegetation}`)} />
+                <DetailRow label={t('market.countryCity')} value={[land.city, land.country].filter(Boolean).join(', ') || '—'} />
+                <DetailRow label={t('market.landowner')} value={land.ownerName || '—'} />
+              </dl>
+            </section>
+
+            <section>
+              <h3 className="mb-2 text-[12px] font-semibold uppercase tracking-wider text-slate-500">{t('market.carbonCredits')}</h3>
+              <dl className="divide-y divide-slate-100 border-y border-slate-100">
+                <DetailRow label={t('market.estimatedCarbonYr')} value={estimate.estimatedCarbonPerYear != null ? `${Number(estimate.estimatedCarbonPerYear).toLocaleString()} tCO₂e` : '—'} />
+                <DetailRow label={t('market.creditsAvailable')} value={Math.round(land.creditsAvailable || 0).toLocaleString()} />
+                <DetailRow label={t('market.pricePerCredit')} value={`$${Number(land.priceCredit || 42.8).toFixed(2)}`} />
+              </dl>
+            </section>
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function DetailRow({ label, value }) {
+  return <div className="flex items-start justify-between gap-4 py-2.5 text-[12.5px]"><dt className="text-slate-500">{label}</dt><dd className="text-right font-medium text-slate-800">{value || '—'}</dd></div>;
 }
 
 function Kpi({ icon: Icon, label, v, highlight }) {

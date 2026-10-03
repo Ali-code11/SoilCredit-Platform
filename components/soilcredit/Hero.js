@@ -1,7 +1,7 @@
 'use client';
 import { useEffect, useState } from 'react';
 import { AnimatePresence, motion, useMotionValue, useReducedMotion, useScroll, useSpring, useTransform } from 'framer-motion';
-import { Sparkles, ArrowRight, Calculator, Orbit, Activity, Satellite, Blocks } from 'lucide-react';
+import { Sparkles, ArrowRight, Calculator, Orbit, Satellite, Blocks } from 'lucide-react';
 import { useLang } from '@/lib/providers';
 
 const flowSteps = ['LAND', 'SATELLITE', 'AI', 'CARBON', 'CREDIT', 'MARKET'];
@@ -78,10 +78,10 @@ export default function Hero({ onOpenAuth }) {
   const mainTitle = [t('hero.title1'), t('hero.title2')];
 
   return (
-    <section id="home" className="relative overflow-hidden bg-[#07142f] pt-28 pb-20 md:pt-36 md:pb-28 text-white">
+    <section id="home" className="hero-section relative overflow-hidden pt-28 pb-20 md:pt-36 md:pb-28">
       <motion.div style={{ y: bgY }} className="absolute inset-0 topographic-surface opacity-60" />
       <motion.div style={{ y: midY }} className="absolute inset-0 bg-[radial-gradient(circle_at_top,_rgba(14,165,233,0.18),_transparent_32%),radial-gradient(circle_at_bottom_right,_rgba(34,197,94,0.15),_transparent_30%)]" />
-      <motion.div style={{ y: fgY }} className="absolute inset-x-0 top-0 h-32 bg-gradient-to-b from-[#07142f] to-transparent" />
+      <motion.div style={{ y: fgY }} className="hero-top-fade absolute inset-x-0 top-0 h-32" />
       {!reducedMotion && <div className="hero-journey" aria-hidden="true">
         <svg viewBox="0 0 900 360" className="hero-journey-lines" fill="none">
           <path d="M74 78 C170 130 225 198 330 200 S500 198 610 180 S755 142 835 100" />
@@ -93,8 +93,8 @@ export default function Hero({ onOpenAuth }) {
         <motion.div className="hero-journey-blocks" style={{ opacity: chainOpacity }}><Blocks /></motion.div>
         <motion.div className="hero-journey-satellite" style={{ opacity: satelliteOpacity }}><Satellite /></motion.div>
       </div>}
-      <motion.div style={{ x: pointer.x * 18, y: pointer.y * 18 }} className="absolute left-1/2 top-1/2 h-[32rem] w-[32rem] -translate-x-1/2 -translate-y-1/2 rounded-full border border-white/10" />
-      <motion.div style={{ x: pointer.x * 24, y: pointer.y * 24 }} className="absolute left-1/2 top-1/2 h-[28rem] w-[28rem] -translate-x-1/2 -translate-y-1/2 rounded-full border border-emerald-300/10" />
+      <motion.div style={{ x: pointer.x * 18, y: pointer.y * 18 }} className="absolute left-1/2 top-1/2 h-[32rem] w-[32rem] -translate-x-1/2 -translate-y-1/2 rounded-full border border-slate-900/10 dark:border-white/10" />
+      <motion.div style={{ x: pointer.x * 24, y: pointer.y * 24 }} className="absolute left-1/2 top-1/2 h-[28rem] w-[28rem] -translate-x-1/2 -translate-y-1/2 rounded-full border border-emerald-700/10 dark:border-emerald-300/10" />
       <motion.div style={{ x: pointer.x * 18, y: pointer.y * 12 }} className="absolute -left-20 bottom-8 h-72 w-72 rounded-full bg-blue-500/10 blur-[100px]" />
       <motion.div style={{ x: pointer.x * -18, y: pointer.y * -12 }} className="absolute -right-16 top-20 h-80 w-80 rounded-full bg-emerald-500/10 blur-[110px]" />
 
@@ -131,19 +131,19 @@ export default function Hero({ onOpenAuth }) {
       </AnimatePresence>
 
       <div className="relative mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
-        <motion.div initial={{ opacity: 0, y: 18 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6 }} className="mx-auto flex max-w-max flex-wrap items-center justify-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-2 text-[11px] uppercase tracking-[0.2em] text-white/80 backdrop-blur-md">
-          <span className="rounded bg-blue-500/15 px-2 py-1 text-[9px] font-bold text-blue-200">{lang.toUpperCase()}</span>
+        <motion.div initial={{ opacity: 0, y: 18 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6 }} className="mx-auto flex max-w-max flex-wrap items-center justify-center gap-2 rounded-full border border-slate-900/10 bg-white/70 px-3 py-2 text-[11px] uppercase tracking-[0.2em] text-slate-700 backdrop-blur-md dark:border-white/10 dark:bg-white/5 dark:text-white/80">
+          <span className="rounded bg-blue-500/10 px-2 py-1 text-[9px] font-bold text-blue-700 dark:bg-blue-500/15 dark:text-blue-200">{lang.toUpperCase()}</span>
           <span>{t('hero.pill')}</span>
-          <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/15 px-2 py-1 text-[9px] font-bold text-emerald-200"><Sparkles className="h-3 w-3" /> {t('hero.new')}</span>
+          <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/10 px-2 py-1 text-[9px] font-bold text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-200"><Sparkles className="h-3 w-3" /> {t('hero.new')}</span>
         </motion.div>
 
         <div className="mt-8 grid gap-8 lg:grid-cols-[1.2fr_0.8fr] lg:items-center">
           <div className="text-center lg:text-left">
             <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.7 }} className="mb-5 flex items-center justify-center gap-2 lg:justify-start">
-              <div className="flex h-10 w-10 items-center justify-center rounded-2xl border border-white/10 bg-white/5 backdrop-blur-sm">
-                <Orbit className="h-5 w-5 text-blue-200" />
+              <div className="flex h-10 w-10 items-center justify-center rounded-2xl border border-slate-900/10 bg-white/70 backdrop-blur-sm dark:border-white/10 dark:bg-white/5">
+                <Orbit className="h-5 w-5 text-blue-700 dark:text-blue-200" />
               </div>
-              <span className="text-[12px] uppercase tracking-[0.28em] text-white/70">Satellite • AI • Carbon</span>
+              <span className="text-[12px] uppercase tracking-[0.28em] text-slate-600 dark:text-white/70">Satellite • AI • Carbon</span>
             </motion.div>
 
             <motion.h1 initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1, duration: 0.8 }} className="font-display text-[44px] font-bold leading-[0.95] tracking-[-0.06em] sm:text-[64px] lg:text-[78px]">
@@ -153,14 +153,14 @@ export default function Hero({ onOpenAuth }) {
                   initial={{ opacity: 0, y: 28, clipPath: 'inset(0 100% 0 0 round 18px)', filter: 'blur(8px)' }}
                   animate={{ opacity: 1, y: 0, clipPath: 'inset(0 0% 0 0 round 18px)', filter: 'blur(0px)' }}
                   transition={{ delay: 0.1 + lineIndex * 0.12, duration: 0.7, ease: [0.22, 1, 0.36, 1] }}
-                  className={`block ${lineIndex === 1 ? 'bg-gradient-to-r from-blue-200 via-blue-100 to-white bg-clip-text text-transparent' : 'text-white'}`}
+                  className={`block ${lineIndex === 1 ? 'bg-gradient-to-r from-blue-700 via-blue-600 to-slate-900 bg-clip-text text-transparent dark:from-blue-200 dark:via-blue-100 dark:to-white' : 'text-slate-900 dark:text-white'}`}
                 >
                   {line}
                 </motion.span>
               ))}
             </motion.h1>
 
-            <motion.p initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.28, duration: 0.6 }} className="mx-auto mt-6 max-w-2xl text-[16px] leading-relaxed text-slate-300 lg:mx-0">
+            <motion.p initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.28, duration: 0.6 }} className="mx-auto mt-6 max-w-2xl text-[16px] leading-relaxed text-slate-600 dark:text-slate-300 lg:mx-0">
               {t('hero.subtitle')}
             </motion.p>
 
@@ -179,65 +179,21 @@ export default function Hero({ onOpenAuth }) {
                   <ArrowRight className="h-4 w-4 transition" strokeWidth={2.5} />
                 </motion.span>
               </motion.button>
-              <a href="#marketplace" className="inline-flex items-center gap-2 rounded-xl border border-white/15 bg-white/5 px-6 py-3.5 text-[15px] font-semibold text-white transition hover:border-blue-300/40 hover:bg-white/10">
+              <a href="#marketplace" className="inline-flex items-center gap-2 rounded-xl border border-slate-900/15 bg-white/70 px-6 py-3.5 text-[15px] font-semibold text-slate-800 transition hover:border-blue-500/40 hover:bg-blue-50 dark:border-white/15 dark:bg-white/5 dark:text-white dark:hover:border-blue-300/40 dark:hover:bg-white/10">
                 {t('hero.cta2')}
               </a>
-              <a href="#calculator" className="inline-flex items-center gap-2 rounded-xl border border-white/15 bg-white/5 px-6 py-3.5 text-[15px] font-semibold text-white transition hover:border-emerald-300/40 hover:bg-white/10">
-                <Calculator className="h-4 w-4 text-emerald-300" /> {t('hero.cta3')}
+              <a href="#calculator" className="inline-flex items-center gap-2 rounded-xl border border-slate-900/15 bg-white/70 px-6 py-3.5 text-[15px] font-semibold text-slate-800 transition hover:border-emerald-500/40 hover:bg-emerald-50 dark:border-white/15 dark:bg-white/5 dark:text-white dark:hover:border-emerald-300/40 dark:hover:bg-white/10">
+                <Calculator className="h-4 w-4 text-emerald-700 dark:text-emerald-300" /> {t('hero.cta3')}
               </a>
             </motion.div>
 
-            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.7 }} className="mt-10 flex flex-wrap items-center justify-center gap-x-6 gap-y-3 text-[11px] uppercase tracking-[0.2em] text-slate-300 lg:justify-start">
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.7 }} className="mt-10 flex flex-wrap items-center justify-center gap-x-6 gap-y-3 text-[11px] uppercase tracking-[0.2em] text-slate-600 dark:text-slate-300 lg:justify-start">
               <span className="inline-flex items-center gap-2"><span className="h-2 w-2 rounded-full bg-emerald-400 dot-live" /> Verra VM0042</span>
               <span className="inline-flex items-center gap-2"><span className="h-2 w-2 rounded-full bg-blue-400" /> Gold Standard</span>
               <span className="inline-flex items-center gap-2"><span className="h-2 w-2 rounded-full bg-emerald-400" /> ISO 14064-2</span>
             </motion.div>
           </div>
 
-          <motion.div initial={{ opacity: 0, x: 26 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.18, duration: 0.8 }} className="relative mx-auto w-full max-w-[520px] lg:mx-0">
-            <div className="absolute inset-0 -z-10 rounded-[2rem] bg-gradient-to-br from-blue-500/20 via-transparent to-emerald-500/15 blur-3xl" />
-            <div className="relative overflow-hidden rounded-[2rem] border border-white/10 bg-[#071612]/80 p-5 shadow-[0_35px_100px_-30px_rgba(45,72,44,0.8)] backdrop-blur-xl">
-              <div className="flex items-center justify-between border-b border-white/10 pb-4">
-                <div>
-                  <div className="text-[10px] uppercase tracking-[0.28em] text-white/55">Field overview</div>
-                  <div className="mt-2 font-display text-[26px] font-bold text-white">North Rift</div>
-                </div>
-                <div className="inline-flex items-center gap-2 rounded-full border border-blue-300/30 bg-blue-500/10 px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.18em] text-blue-100"><Activity className="h-3.5 w-3.5" /> Live</div>
-              </div>
-
-              <div className="mt-5 rounded-[1.5rem] border border-white/10 bg-[radial-gradient(circle_at_top,_rgba(96,165,250,0.2),_transparent_32%),linear-gradient(180deg,_rgba(17,24,39,0.8),_rgba(15,23,42,0.4))] p-4">
-                <div className="terrain-visual relative h-[280px] overflow-hidden rounded-[1.25rem] border border-white/10">
-                  <motion.div style={{ x: pointer.x * 18, y: pointer.y * 14 }} className="absolute inset-0 bg-[radial-gradient(circle_at_center,_rgba(16,185,129,0.2),_transparent_52%)]" />
-                  <motion.div style={{ x: pointer.x * 12, y: pointer.y * 10, backgroundImage: 'linear-gradient(rgba(255,255,255,0.1) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.1) 1px, transparent 1px)', backgroundSize: '28px 28px' }} className="absolute inset-0 opacity-80" />
-                  <div className="absolute inset-x-0 bottom-0 h-28 bg-gradient-to-t from-emerald-500/25 to-transparent" />
-                  <div className="absolute left-6 top-16 h-20 w-20 rounded-full border border-blue-200/40 bg-blue-400/10 blur-sm" />
-                  <div className="absolute right-10 top-12 h-24 w-24 rounded-full border border-emerald-200/40 bg-emerald-400/10 blur-sm" />
-                  <motion.div className="absolute bottom-10 left-8 right-8 h-28 rounded-[1.5rem] border border-white/10 bg-gradient-to-r from-emerald-500/20 via-emerald-400/10 to-blue-500/20" animate={{ y: [0, -10, 0], x: [0, 6, 0] }} transition={{ duration: 9, repeat: Infinity, ease: 'easeInOut' }} />
-                  <motion.div animate={{ rotate: [0, 360] }} transition={{ duration: 18, repeat: Infinity, ease: 'linear' }} className="absolute right-10 top-10 h-14 w-14 rounded-full border border-dashed border-white/15" />
-                  <div className="absolute right-10 top-10 h-3 w-3 rounded-full bg-emerald-300 shadow-[0_0_18px_rgba(110,231,183,0.9)]" />
-                  <div className="absolute left-16 top-16 h-2.5 w-2.5 rounded-full bg-blue-300 shadow-[0_0_18px_rgba(125,211,252,0.9)]" />
-                </div>
-              </div>
-
-              <div className="mt-5 grid gap-3 sm:grid-cols-3">
-                <div className="rounded-2xl border border-white/10 bg-white/5 p-3">
-                  <div className="text-[10px] uppercase tracking-[0.2em] text-white/55">Land</div>
-                  <div className="mt-2 font-display text-[22px] font-bold text-white">1,240</div>
-                  <div className="text-[11px] text-slate-300">ha</div>
-                </div>
-                <div className="rounded-2xl border border-white/10 bg-white/5 p-3">
-                  <div className="text-[10px] uppercase tracking-[0.2em] text-white/55">Carbon</div>
-                  <div className="mt-2 font-display text-[22px] font-bold text-white">46k</div>
-                  <div className="text-[11px] text-slate-300">tCO₂e</div>
-                </div>
-                <div className="rounded-2xl border border-white/10 bg-white/5 p-3">
-                  <div className="text-[10px] uppercase tracking-[0.2em] text-white/55">Market</div>
-                  <div className="mt-2 font-display text-[22px] font-bold text-white">$1.2M</div>
-                  <div className="text-[11px] text-slate-300">value</div>
-                </div>
-              </div>
-            </div>
-          </motion.div>
         </div>
 
         <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.55 }} className="mt-12 flex flex-wrap items-center justify-center gap-3">

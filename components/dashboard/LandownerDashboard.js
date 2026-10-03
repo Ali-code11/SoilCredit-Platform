@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Plus, Edit3, Trash2, X, Loader2, MapPin, Leaf, Coins, TrendingUp, Store, CheckCircle2, UploadCloud } from 'lucide-react';
 import { useAuth, useLang } from '@/lib/providers';
+import { AZERBAIJAN_REGION_GROUPS } from '@/lib/constants/regions';
 
 const MAX_LAND_IMAGES = 3;
 
@@ -98,12 +99,17 @@ function getCountryCities(country) {
 function getCityFocus(country, city) {
   const cities = COUNTRY_CITY_FOCUS[country] || COUNTRY_CITY_FOCUS.Azerbaijan;
   if (city && cities?.[city]) return cities[city];
+  const regionGroup = country === 'Azerbaijan' && AZERBAIJAN_REGION_GROUPS.find((group) => group.regions.some((region) => region.id === city));
+  if (regionGroup?.mapCity && cities?.[regionGroup.mapCity]) return cities[regionGroup.mapCity];
   const firstCity = Object.values(cities || COUNTRY_CITY_FOCUS.Azerbaijan)[0] || { lat: 40.4093, lng: 49.8671 };
   return firstCity;
 }
 
 function getLocationText(country, city) {
-  return [city, country].filter(Boolean).join(', ');
+  const region = country === 'Azerbaijan' && AZERBAIJAN_REGION_GROUPS
+    .flatMap((group) => group.regions)
+    .find((item) => item.id === city);
+  return [region?.name || city, country].filter(Boolean).join(', ');
 }
 
 function normalizeImages(images) {
@@ -259,6 +265,7 @@ function LandModal({ open, land, onClose, onSaved }) {
   }, [land, open]);
 
   const cityOptions = useMemo(() => getCountryCities(f.country), [f.country]);
+  const isKnownCityOrRegion = cityOptions.includes(f.city) || AZERBAIJAN_REGION_GROUPS.some((group) => group.regions.some((region) => region.id === f.city));
 
   const set = (k, v) => setF((x) => ({ ...x, [k]: v }));
 
@@ -354,7 +361,19 @@ function LandModal({ open, land, onClose, onSaved }) {
                 {Object.keys(COUNTRY_CITY_FOCUS).map((country) => <option key={country} value={country}>{country}</option>)}
               </select></FormLabel>
               <FormLabel label="City / Region"><select value={f.city} onChange={(e) => { set('city', e.target.value); set('location', getLocationText(f.country, e.target.value)); }} className="field">
-                {cityOptions.map((city) => <option key={city} value={city}>{city}</option>)}
+                {!isKnownCityOrRegion && <optgroup label="Mövcud dəyər"><option value={f.city}>{f.city}</option></optgroup>}
+                {f.country === 'Azerbaijan' ? (
+                  <>
+                    <optgroup label="Mövcud şəhərlər">
+                      {cityOptions.map((city) => <option key={city} value={city}>{city}</option>)}
+                    </optgroup>
+                    {AZERBAIJAN_REGION_GROUPS.map((group) => (
+                      <optgroup key={group.id} label={group.name}>
+                        {group.regions.map((region) => <option key={region.id} value={region.id}>{region.name}</option>)}
+                      </optgroup>
+                    ))}
+                  </>
+                ) : cityOptions.map((city) => <option key={city} value={city}>{city}</option>)}
               </select></FormLabel>
               <FormLabel label={t('dash.location')}><input value={f.location} onChange={e => set('location', e.target.value)} className="field" placeholder="Ganja, Azerbaijan" /></FormLabel>
               <FormLabel label={t('dash.area')}><input type="number" min="1" value={f.area} onChange={e => set('area', Number(e.target.value))} required className="field" /></FormLabel>
