@@ -5,7 +5,6 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { ArrowLeft, Eye, Loader2, Save } from 'lucide-react';
 import { useAuth } from '@/lib/providers';
-import Navbar from '@/components/soilcredit/Navbar';
 
 const emptyArticle = {
   title: '',
@@ -74,13 +73,12 @@ export default function ArticleEditor({ articleId }) {
   };
 
   if (loading) {
-    return <div className="flex min-h-screen items-center justify-center bg-slate-50"><Loader2 className="h-7 w-7 animate-spin text-blue-700" /></div>;
+    return <div className="flex min-h-[calc(100vh-4rem)] items-center justify-center bg-slate-50"><Loader2 className="h-7 w-7 animate-spin text-blue-700" /></div>;
   }
 
   return (
-    <div className="min-h-screen bg-slate-50">
-      <Navbar />
-      <main className="mx-auto max-w-4xl px-4 pb-16 pt-28 sm:px-6 lg:px-8">
+    <div className="min-h-[calc(100vh-4rem)] bg-slate-50">
+      <main className="mx-auto max-w-4xl px-4 pb-16 pt-8 sm:px-6 lg:px-8">
         <Link href="/admin/news" className="inline-flex items-center gap-2 text-sm font-semibold text-slate-600 hover:text-blue-700"><ArrowLeft className="h-4 w-4" /> Back to news</Link>
         <div className="mb-7 mt-5 flex flex-col justify-between gap-3 sm:flex-row sm:items-end">
           <div>

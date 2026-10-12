@@ -4,7 +4,6 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { ArrowLeft, Loader2 } from 'lucide-react';
 import { useAuth } from '@/lib/providers';
-import Navbar from '@/components/soilcredit/Navbar';
 
 function formatDate(value) {
   if (!value) return '';
@@ -30,9 +29,8 @@ export default function ArticlePreview({ articleId }) {
   }, [apiFetch, articleId]);
 
   return (
-    <div className="min-h-screen bg-white">
-      <Navbar />
-      <main className="mx-auto max-w-4xl px-4 pb-16 pt-28 sm:px-6 lg:px-8">
+    <div className="min-h-[calc(100vh-4rem)] bg-white">
+      <main className="mx-auto max-w-4xl px-4 pb-16 pt-8 sm:px-6 lg:px-8">
         <Link href={`/admin/news/${encodeURIComponent(articleId)}`} className="inline-flex items-center gap-2 text-sm font-semibold text-blue-700"><ArrowLeft className="h-4 w-4" /> Back to editor</Link>
         {loading ? <div className="flex justify-center py-24"><Loader2 className="h-7 w-7 animate-spin text-blue-700" /></div> : null}
         {error ? <div role="alert" className="mt-6 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-800">{error}</div> : null}

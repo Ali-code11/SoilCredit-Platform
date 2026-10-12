@@ -5,7 +5,6 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { CalendarDays, Eye, FilePlus2, Loader2, Pencil, Send, Trash2, Undo2 } from 'lucide-react';
 import { useAuth } from '@/lib/providers';
-import Navbar from '@/components/soilcredit/Navbar';
 
 const statusStyles = {
   draft: 'bg-amber-50 text-amber-800',
@@ -61,9 +60,8 @@ export default function AdminNewsDashboard() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50">
-      <Navbar />
-      <main className="mx-auto max-w-7xl px-4 pb-16 pt-28 sm:px-6 lg:px-8">
+    <div className="min-h-[calc(100vh-4rem)] bg-slate-50">
+      <main className="mx-auto max-w-7xl px-4 pb-16 pt-8 sm:px-6 lg:px-8">
         <div className="mb-8 flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
           <div>
             <p className="text-sm font-semibold uppercase tracking-[0.16em] text-blue-700">Admin dashboard</p>
