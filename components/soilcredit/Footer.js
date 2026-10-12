@@ -6,10 +6,32 @@ import { useLang } from '@/lib/providers';
 
 export default function Footer() {
   const { t } = useLang();
-  const [email, setEmail] = useState(''); const [ok, setOk] = useState(false);
+  const [email, setEmail] = useState('');
+  const [message, setMessage] = useState('');
+  const [messageType, setMessageType] = useState('');
+  const [submitting, setSubmitting] = useState(false);
   const subscribe = async (e) => {
-    e.preventDefault(); if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) return;
-    try { await fetch('/api/newsletter', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email }) }); setOk(true); setEmail(''); setTimeout(() => setOk(false), 4000); } catch {}
+    e.preventDefault();
+    setMessage('');
+    setMessageType('');
+    setSubmitting(true);
+    try {
+      const response = await fetch('/api/newsletter', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email }),
+      });
+      const result = await response.json();
+      if (!response.ok || !result.ok) throw new Error(result.error || t('footer.newsletterError'));
+      setMessage(result.message || t('footer.newsletterSuccess'));
+      setMessageType('success');
+      setEmail('');
+    } catch (error) {
+      setMessage(error.message || t('footer.newsletterError'));
+      setMessageType('error');
+    } finally {
+      setSubmitting(false);
+    }
   };
   return (
     <footer id="footer" className="relative bg-white border-t border-slate-200 pt-16 pb-8">
@@ -20,10 +42,15 @@ export default function Footer() {
             <div className="font-display font-bold text-2xl text-gradient-bg mb-1">{t('footer.newsletter')}</div>
             <div className="text-slate-600 text-[14px]">{t('footer.newsletterHint')}</div>
           </div>
-          <form onSubmit={subscribe} className="flex w-full md:w-auto gap-2">
-            <motion.input whileFocus={{ scale: 1.01 }} type="email" required value={email} onChange={e => setEmail(e.target.value)} placeholder="you@earth.co" className="field md:w-72" />
-            <motion.button whileHover={{ y: -2, scale: 1.01 }} whileTap={{ scale: 0.98 }} className="btn-primary inline-flex items-center gap-1.5 rounded-xl px-5 py-3 text-[13.5px] font-semibold">{ok ? (<><CheckCircle2 className="h-4 w-4" /> {t('footer.subscribed')}</>) : (<>{t('footer.subscribe')} <Send className="h-4 w-4" /></>)}</motion.button>
-          </form>
+          <div className="w-full md:w-auto">
+            <form onSubmit={subscribe} className="flex w-full gap-2">
+              <motion.input whileFocus={{ scale: 1.01 }} type="email" autoComplete="email" required maxLength={254} value={email} onChange={e => setEmail(e.target.value)} placeholder="you@earth.co" className="field min-w-0 md:w-72" aria-label={t('footer.newsletterEmail')} />
+              <motion.button type="submit" disabled={submitting} whileHover={{ y: -2, scale: 1.01 }} whileTap={{ scale: 0.98 }} className="btn-primary inline-flex shrink-0 items-center gap-1.5 rounded-xl px-5 py-3 text-[13.5px] font-semibold disabled:cursor-wait disabled:opacity-60">
+                {submitting ? t('footer.subscribing') : <>{t('footer.subscribe')} <Send className="h-4 w-4" /></>}
+              </motion.button>
+            </form>
+            {message ? <p role={messageType === 'error' ? 'alert' : 'status'} className={`mt-2 text-sm ${messageType === 'error' ? 'text-rose-700' : 'text-emerald-700'}`}>{message}</p> : null}
+          </div>
         </motion.div>
 
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-8 pb-10 border-b border-slate-200">

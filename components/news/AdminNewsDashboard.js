@@ -105,9 +105,14 @@ export default function AdminNewsDashboard() {
                       <Pencil className="h-3.5 w-3.5" /> Edit
                     </Link>
                     {article.status === 'published' ? (
-                      <button type="button" disabled={busyId === article.id} onClick={() => runAction(article, 'unpublish')} className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-700 disabled:opacity-50">
-                        <Undo2 className="h-3.5 w-3.5" /> Unpublish
-                      </button>
+                      <>
+                        <Link href={`/admin/newsletter?articleId=${encodeURIComponent(article.id)}`} className="inline-flex items-center gap-1.5 rounded-lg border border-blue-200 px-3 py-2 text-xs font-semibold text-blue-800 hover:bg-blue-50">
+                          <Send className="h-3.5 w-3.5" /> Send newsletter
+                        </Link>
+                        <button type="button" disabled={busyId === article.id} onClick={() => runAction(article, 'unpublish')} className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-700 disabled:opacity-50">
+                          <Undo2 className="h-3.5 w-3.5" /> Unpublish
+                        </button>
+                      </>
                     ) : (
                       <button type="button" disabled={busyId === article.id} onClick={() => runAction(article, 'publish')} className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-700 px-3 py-2 text-xs font-semibold text-white disabled:opacity-50">
                         <Send className="h-3.5 w-3.5" /> Publish

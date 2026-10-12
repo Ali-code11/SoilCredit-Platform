@@ -40,6 +40,9 @@ export default async function AdminLayout({ children }) {
             <Link href="/admin/news" className="rounded-lg px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-blue-50 hover:text-blue-800">
               News
             </Link>
+            <Link href="/admin/newsletter" className="rounded-lg px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-blue-50 hover:text-blue-800">
+              Newsletter
+            </Link>
             <Link href="/" className="rounded-lg px-3 py-2 text-sm font-medium text-slate-500 hover:bg-slate-100 hover:text-slate-800">
               Public site
             </Link>

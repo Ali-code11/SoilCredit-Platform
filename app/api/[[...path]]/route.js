@@ -1,8 +1,9 @@
 import { NextResponse } from 'next/server';
 import { v4 as uuidv4 } from 'uuid';
-import { Resend } from 'resend';
 import crypto from 'crypto';
 import { ensureNewsIndexes, getDb } from '@/lib/mongodb';
+import { sendEmail as sendResendEmail } from '@/lib/email';
+import { handleNewsletterRoute } from '@/lib/newsletter-api';
 import { createSession, findActiveSession, SESSION_MAX_AGE_SECONDS } from '@/lib/session.mjs';
 import { SUPPORTED_LAND_COUNTRIES } from '@/lib/constants/locations';
 import { z } from 'zod';
@@ -36,15 +37,7 @@ function sameHash(left, right) {
   return a.length === b.length && crypto.timingSafeEqual(a, b);
 }
 async function sendEmail({ to, subject, html }) {
-  if (!process.env.RESEND_API_KEY) throw new Error('Email service is not configured. Set RESEND_API_KEY and restart the server.');
-  const resend = new Resend(process.env.RESEND_API_KEY);
-  const { error } = await resend.emails.send({
-    from: process.env.EMAIL_FROM || 'SoilCredit <no-reply@soilcredit.net>',
-    to,
-    subject,
-    html,
-  });
-  if (error) throw new Error(error.message || 'Email could not be sent');
+  await sendResendEmail({ to, subject, html });
   return true;
 }
 function appUrl(req) {
@@ -178,6 +171,9 @@ async function handle(req, params) {
   const method = req.method;
 
   try {
+    const newsletterResponse = await handleNewsletterRoute(req, route, method, currentUser);
+    if (newsletterResponse) return newsletterResponse;
+
     /* Public */
     if (route === '' || route === 'health') return NextResponse.json({ ok: true, service: 'soilcredit', ts: Date.now() });
 
