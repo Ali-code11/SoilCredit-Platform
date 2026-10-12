@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
+import { runNewsletterWorker } from '../scripts/newsletter-worker.mjs';
 import {
   buildConfirmationEmail,
   buildNewsletterEmail,
@@ -73,4 +74,73 @@ test('Resend delivery webhook events map only to supported delivery states', () 
   assert.equal(getWebhookDeliveryStatus('email.sent'), 'accepted');
   assert.equal(getWebhookDeliveryStatus('email.delivery_delayed'), 'accepted');
   assert.equal(getWebhookDeliveryStatus('contact.updated'), null);
+});
+
+test('newsletter worker requires its endpoint and secret without making a request', async () => {
+  let called = false;
+  await assert.rejects(
+    runNewsletterWorker({ workerUrl: '', cronSecret: 'test-secret', fetchImpl: async () => { called = true; } }),
+    /NEWSLETTER_WORKER_URL/,
+  );
+  await assert.rejects(
+    runNewsletterWorker({ workerUrl: 'https://soilcredit.net/api/newsletter/worker', cronSecret: '', fetchImpl: async () => { called = true; } }),
+    /CRON_SECRET/,
+  );
+  assert.equal(called, false);
+});
+
+test('newsletter worker invokes only the configured endpoint and returns a safe summary', async () => {
+  let request;
+  const result = await runNewsletterWorker({
+    workerUrl: 'https://soilcredit.onrender.com/api/newsletter/worker',
+    cronSecret: 'test-worker-secret',
+    fetchImpl: async (url, options) => {
+      request = { url: url.toString(), options };
+      return Response.json({
+        ok: true,
+        processed: true,
+        campaignId: 'campaign-id',
+        status: 'processing',
+        snapshot: { snapshotCount: 2, snapshotComplete: true },
+        privateData: 'not returned',
+      });
+    },
+  });
+
+  assert.equal(request.url, 'https://soilcredit.onrender.com/api/newsletter/worker');
+  assert.equal(request.options.method, 'POST');
+  assert.equal(request.options.headers.Authorization, 'Bearer test-worker-secret');
+  assert.deepEqual(result, {
+    processed: true,
+    campaignId: 'campaign-id',
+    status: 'processing',
+    snapshot: { snapshotCount: 2, snapshotComplete: true },
+  });
+});
+
+test('newsletter worker rejects remote HTTP endpoints and unsuccessful responses', async () => {
+  let called = false;
+  const fetchImpl = async () => {
+    called = true;
+    return Response.json({ ok: false, error: 'Forbidden' }, { status: 403 });
+  };
+
+  await assert.rejects(
+    runNewsletterWorker({
+      workerUrl: 'http://soilcredit.onrender.com/api/newsletter/worker',
+      cronSecret: 'test-worker-secret',
+      fetchImpl,
+    }),
+    /must be an HTTPS URL/,
+  );
+  assert.equal(called, false);
+
+  await assert.rejects(
+    runNewsletterWorker({
+      workerUrl: 'https://soilcredit.onrender.com/api/newsletter/worker',
+      cronSecret: 'test-worker-secret',
+      fetchImpl,
+    }),
+    /HTTP 403/,
+  );
 });
