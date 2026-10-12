@@ -89,6 +89,7 @@ export default function Navbar({ onOpenAuth, onOpenTeam }) {
               {links.map((l) => (
                 <button key={l.label} onClick={() => handleNavClick(l.href)} className={`px-3 py-2 text-[14px] font-medium transition ${isHomeDark ? 'text-white/75 hover:text-white' : 'text-slate-600 hover:text-blue-600'}`}>{l.label}</button>
               ))}
+              <Link href="/news" className={`px-3 py-2 text-[14px] font-medium transition ${isHomeDark ? 'text-white/75 hover:text-white' : 'text-slate-600 hover:text-blue-600'}`}>News</Link>
             </nav>
 
             <div className="flex items-center gap-2">
@@ -125,6 +126,7 @@ export default function Navbar({ onOpenAuth, onOpenTeam }) {
                           <div className="mt-1 inline-flex text-[10px] uppercase tracking-wider font-semibold px-2 py-0.5 rounded-full bg-blue-50 text-blue-600">{user.role}</div>
                         </div>
                         <Link href="/dashboard" onClick={() => setMenu(false)} className="w-full flex items-center gap-2 px-3 py-2 text-[13px] text-slate-700 hover:bg-slate-50 rounded-lg"><LayoutDashboard className="h-4 w-4" /> {t('nav.dashboard')}</Link>
+                        {user.role === 'admin' ? <Link href="/admin/news" onClick={() => setMenu(false)} className="w-full flex items-center gap-2 px-3 py-2 text-[13px] text-slate-700 hover:bg-slate-50 rounded-lg"><LayoutDashboard className="h-4 w-4" /> News management</Link> : null}
                         <button onClick={() => { setMenu(false); logout(); }} className="w-full flex items-center gap-2 px-3 py-2 text-[13px] text-rose-600 hover:bg-rose-50 rounded-lg"><LogOut className="h-4 w-4" /> {t('nav.logout')}</button>
                       </motion.div>
                     )}
@@ -159,6 +161,7 @@ export default function Navbar({ onOpenAuth, onOpenTeam }) {
                 {links.map((l) => (
                   <button key={l.label} onClick={() => { setOpen(false); handleNavClick(l.href); }} className="px-4 py-3 rounded-xl hover:bg-slate-50 text-slate-700 text-left">{l.label}</button>
                 ))}
+                <Link href="/news" onClick={() => setOpen(false)} className="px-4 py-3 rounded-xl hover:bg-slate-50 text-slate-700">News</Link>
                 <div className="flex items-center gap-2 px-4 py-3"><span className="text-[12px] text-slate-500">Language:</span>
                   <button onClick={() => setLang('en')} className={`text-[12px] font-semibold px-2 py-1 rounded ${lang==='en' ? 'bg-blue-50 text-blue-600' : 'text-slate-500'}`}>EN</button>
                   <button onClick={() => setLang('az')} className={`text-[12px] font-semibold px-2 py-1 rounded ${lang==='az' ? 'bg-blue-50 text-blue-600' : 'text-slate-500'}`}>AZ</button>
@@ -174,6 +177,7 @@ export default function Navbar({ onOpenAuth, onOpenTeam }) {
                 <div className="mt-4 pt-4 border-t border-slate-100 flex flex-col gap-2">
                   {user ? (<>
                     <Link href="/dashboard" onClick={() => setOpen(false)} className="w-full px-4 py-3 rounded-xl border border-slate-200 text-slate-700 text-center">{t('nav.dashboard')}</Link>
+                    {user.role === 'admin' ? <Link href="/admin/news" onClick={() => setOpen(false)} className="w-full px-4 py-3 rounded-xl border border-slate-200 text-slate-700 text-center">News management</Link> : null}
                     <button onClick={() => { setOpen(false); logout(); }} className="w-full px-4 py-3 rounded-xl border border-rose-200 text-rose-600">{t('nav.logout')}</button>
                   </>) : (<>
                     <button onClick={() => { setOpen(false); onOpenAuth?.('login'); }} className="w-full px-4 py-3 rounded-xl border border-slate-200 text-slate-700">{t('nav.login')}</button>

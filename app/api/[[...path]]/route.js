@@ -1,15 +1,9 @@
 import { NextResponse } from 'next/server';
-import { MongoClient } from 'mongodb';
 import { v4 as uuidv4 } from 'uuid';
 import { Resend } from 'resend';
 import crypto from 'crypto';
-
-const DB_NAME = process.env.DB_NAME && process.env.DB_NAME !== 'soilcredit' ? process.env.DB_NAME : 'soilcredit';
-let cached = null;
-async function getDb() {
-  if (!cached) { cached = new MongoClient(process.env.MONGO_URL); await cached.connect(); }
-  return cached.db(DB_NAME);
-}
+import { ensureNewsIndexes, getDb } from '@/lib/mongodb';
+import { z } from 'zod';
 
 /* ---------- crypto helpers ---------- */
 function hashPassword(pw, salt) {
@@ -92,8 +86,7 @@ function estimate({ area, soil, region, forestType, vegetation }) {
 
 /* ---------- auth helpers ---------- */
 async function currentUser(req) {
-  const auth = getAuthHeader(req);
-  const token = (typeof auth === 'string' && auth.startsWith('Bearer ')) ? auth.slice(7) : null;
+  const token = getSessionToken(req);
   if (!token) return null;
   const db = await getDb();
   const session = await db.collection('sessions').findOne({ token });
@@ -102,6 +95,46 @@ async function currentUser(req) {
   if (!user) return null;
   const { hash, salt, _id, ...pub } = user; return pub;
 }
+
+function getSessionToken(req) {
+  const auth = getAuthHeader(req);
+  if (typeof auth === 'string' && auth.startsWith('Bearer ')) return auth.slice(7);
+  return req.cookies?.get?.('sc_session')?.value || null;
+}
+
+function withSessionCookie(response, token) {
+  response.cookies.set('sc_session', token, {
+    httpOnly: true,
+    sameSite: 'lax',
+    secure: process.env.NODE_ENV === 'production',
+    path: '/',
+    maxAge: 60 * 60 * 24 * 30,
+  });
+  return response;
+}
+
+function clearSessionCookie(response) {
+  response.cookies.set('sc_session', '', {
+    httpOnly: true,
+    sameSite: 'lax',
+    secure: process.env.NODE_ENV === 'production',
+    path: '/',
+    maxAge: 0,
+  });
+  return response;
+}
+
+const articleSchema = z.object({
+  title: z.string().trim().min(1, 'Title is required').max(160, 'Title must be 160 characters or fewer'),
+  slug: z.string().trim().toLowerCase().min(1, 'Slug is required').max(180).regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/, 'Slug may contain lowercase letters, numbers, and hyphens'),
+  summary: z.string().trim().min(1, 'Summary is required').max(500, 'Summary must be 500 characters or fewer'),
+  content: z.string().trim().min(1, 'Content is required').max(50000, 'Content must be 50,000 characters or fewer'),
+  coverImageUrl: z.string().trim().max(2048).refine((value) => {
+    if (!value) return true;
+    try { return new URL(value).protocol === 'https:'; } catch { return false; }
+  }, 'Cover image must be a valid HTTPS URL'),
+  status: z.enum(['draft', 'published', 'unpublished']),
+}).strict();
 
 async function json(req) { try { return await req.json(); } catch { return {}; } }
 function ok(data) { return NextResponse.json({ ok: true, ...data }); }
@@ -130,6 +163,27 @@ async function handle(req, params) {
   try {
     /* Public */
     if (route === '' || route === 'health') return NextResponse.json({ ok: true, service: 'soilcredit', ts: Date.now() });
+
+    if (route === 'news' && method === 'GET') {
+      const db = await getDb();
+      const articles = db.collection('newsArticles');
+      await ensureNewsIndexes(articles);
+      const published = await articles.find({ status: 'published' })
+        .project({ _id: 0, id: 1, title: 1, slug: 1, summary: 1, coverImageUrl: 1, publishedAt: 1 })
+        .sort({ publishedAt: -1 })
+        .toArray();
+      return ok({ articles: published });
+    }
+
+    const publicArticleMatch = route.match(/^news\/([^/]+)$/);
+    if (publicArticleMatch && method === 'GET') {
+      const db = await getDb();
+      const articles = db.collection('newsArticles');
+      await ensureNewsIndexes(articles);
+      const article = await articles.findOne({ slug: publicArticleMatch[1], status: 'published' }, { projection: { _id: 0 } });
+      if (!article) return err('Article not found', 404);
+      return ok({ article });
+    }
 
     if (route === 'stats' && method === 'GET') {
       const db = await getDb();
@@ -209,7 +263,7 @@ async function handle(req, params) {
       const token = uuidv4();
       await db.collection('sessions').insertOne({ token, userId: u.id, createdAt: new Date().toISOString() });
       const { hash: _h, salt: _s, _id, ...pub } = u;
-      return ok({ token, user: pub });
+      return withSessionCookie(ok({ token, user: pub }), token);
     }
 
     if (route === 'auth/verify-email' && (method === 'POST' || method === 'GET')) {
@@ -236,7 +290,7 @@ async function handle(req, params) {
       const token = uuidv4();
       await db.collection('sessions').insertOne({ token, userId: user.id, createdAt: new Date().toISOString() });
       const { hash: _h, salt: _s, emailVerificationCodeHash: _vc, emailVerificationExpiresAt: _ve, emailVerificationLastSentAt: _vs, emailVerificationAttempts: _va, emailVerificationToken: _vt, _id, ...pub } = user;
-      return ok({ message: 'Email verified successfully', token, user: { ...pub, emailVerified: true } });
+      return withSessionCookie(ok({ message: 'Email verified successfully', token, user: { ...pub, emailVerified: true } }), token);
     }
 
     if (route === 'auth/resend-verification' && method === 'POST') {
@@ -295,14 +349,92 @@ async function handle(req, params) {
 
     if (route === 'auth/me' && method === 'GET') {
       const u = await currentUser(req); if (!u) return err('Unauthenticated', 401);
-      return ok({ user: u });
+      return withSessionCookie(ok({ user: u }), getSessionToken(req));
     }
 
     if (route === 'auth/logout' && method === 'POST') {
-      const auth = getAuthHeader(req);
-      const token = (typeof auth === 'string' && auth.startsWith('Bearer ')) ? auth.slice(7) : null;
+      const token = getSessionToken(req);
       if (token) { const db = await getDb(); await db.collection('sessions').deleteOne({ token }); }
-      return ok({});
+      return clearSessionCookie(ok({}));
+    }
+
+    const adminNewsMatch = route.match(/^admin\/news(?:\/([^/]+)(?:\/(publish|unpublish))?)?$/);
+    if (adminNewsMatch) {
+      const user = await currentUser(req);
+      if (!user) return err('Unauthenticated', 401);
+      if (user.role !== 'admin') return err('Forbidden', 403);
+
+      const db = await getDb();
+      const articles = db.collection('newsArticles');
+      await ensureNewsIndexes(articles);
+      const id = adminNewsMatch[1];
+      const action = adminNewsMatch[2];
+
+      if (!id && method === 'GET') {
+        const allArticles = await articles.find({})
+          .project({ _id: 0 })
+          .sort({ updatedAt: -1 })
+          .toArray();
+        return ok({ articles: allArticles });
+      }
+
+      if (!id && method === 'POST') {
+        const parsed = articleSchema.safeParse(await json(req));
+        if (!parsed.success) return err(parsed.error.issues[0].message, 400);
+        const now = new Date().toISOString();
+        const article = {
+          id: uuidv4(),
+          ...parsed.data,
+          publishedAt: parsed.data.status === 'published' ? now : null,
+          createdAt: now,
+          updatedAt: now,
+        };
+        await articles.insertOne(article);
+        const { _id, ...savedArticle } = article;
+        return ok({ article: savedArticle });
+      }
+
+      if (id && !action && method === 'GET') {
+        const article = await articles.findOne({ id }, { projection: { _id: 0 } });
+        if (!article) return err('Article not found', 404);
+        return ok({ article });
+      }
+
+      if (id && !action && method === 'PUT') {
+        const parsed = articleSchema.safeParse(await json(req));
+        if (!parsed.success) return err(parsed.error.issues[0].message, 400);
+        const existing = await articles.findOne({ id });
+        if (!existing) return err('Article not found', 404);
+        const now = new Date().toISOString();
+        const publishedAt = parsed.data.status === 'published'
+          ? (existing.status === 'published' ? existing.publishedAt : now)
+          : (existing.publishedAt || null);
+        await articles.updateOne({ id }, { $set: { ...parsed.data, publishedAt, updatedAt: now } });
+        const updated = await articles.findOne({ id }, { projection: { _id: 0 } });
+        return ok({ article: updated });
+      }
+
+      if (id && action && method === 'POST') {
+        const now = new Date().toISOString();
+        const status = action === 'publish' ? 'published' : 'unpublished';
+        const update = {
+          status,
+          updatedAt: now,
+          ...(status === 'published' ? { publishedAt: now } : {}),
+        };
+        const result = await articles.updateOne({ id }, { $set: update });
+        if (!result.matchedCount) return err('Article not found', 404);
+        const updated = await articles.findOne({ id }, { projection: { _id: 0 } });
+        return ok({ article: updated });
+      }
+
+      if (id && !action && method === 'DELETE') {
+        const result = await articles.deleteOne({ id });
+        if (!result.deletedCount) return err('Article not found', 404);
+        return ok({});
+      }
+
+      return err('Not found', 404);
     }
 
     /* ------ LANDS (landowner-scoped CRUD) ------ */
@@ -480,6 +612,7 @@ async function handle(req, params) {
 
     return err('Not found', 404);
   } catch (e) {
+    if (e?.code === 11000 && route.startsWith('admin/news')) return err('An article with this slug already exists.', 409);
     console.error('API error:', { route, method, message: e.message });
     return NextResponse.json({ ok: false, error: 'An unexpected server error occurred.' }, { status: 500 });
   }

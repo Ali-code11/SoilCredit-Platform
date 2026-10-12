@@ -4,7 +4,7 @@ export default function robots() {
       {
         userAgent: '*',
         allow: '/',
-        disallow: ['/dashboard/', '/reset-password/', '/verify-email/'],
+        disallow: ['/admin', '/dashboard/', '/reset-password/', '/verify-email/'],
       },
     ],
     sitemap: 'https://soilcredit.net/sitemap.xml',
