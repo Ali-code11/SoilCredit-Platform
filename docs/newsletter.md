@@ -46,3 +46,5 @@ Set its signing secret as `RESEND_WEBHOOK_SECRET`. The handler verifies Svix sig
 6. Check campaign and per-recipient states in the admin panel and verify delivery outcomes from the Resend webhook when configured.
 
 The legacy `newsletter` collection is not imported: its records do not establish double-opt-in consent.
+
+Subscription requests are throttled per email address and per client IP. Existing active subscriptions and pending subscriptions still inside the confirmation resend cooldown do not consume the per-IP allowance.
