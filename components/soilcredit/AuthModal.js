@@ -3,8 +3,9 @@ import { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Leaf, User, Building2, Loader2, CheckCircle2, Eye, EyeOff, ArrowLeft } from 'lucide-react';
 import { useLang, useAuth } from '@/lib/providers';
+import { getSafeReturnPath } from '@/lib/auth-redirect.mjs';
 
-export default function AuthModal({ open, mode, onClose }) {
+export default function AuthModal({ open, mode, onClose, allowSignup = true }) {
   const { t } = useLang();
   const { login } = useAuth();
   const [tab, setTab] = useState(mode || 'signup');
@@ -45,7 +46,15 @@ export default function AuthModal({ open, mode, onClose }) {
         if (!d.ok) {
           if (d.code === 'EMAIL_NOT_VERIFIED') window.location.href = `/verify-email?email=${encodeURIComponent(d.email || form.email)}`;
           else setErr(d.error || 'Login failed');
-        } else { login(d.token, d.user); onClose?.(); window.location.href = '/dashboard'; }
+        } else {
+          login(d.token, d.user);
+          const returnTo = new URLSearchParams(window.location.search).get('returnTo');
+          if (returnTo) window.location.assign(getSafeReturnPath(returnTo));
+          else {
+            onClose?.();
+            window.location.assign('/dashboard');
+          }
+        }
       }
     } catch { setErr('Network error'); }
     setLoading(false);
@@ -67,7 +76,7 @@ export default function AuthModal({ open, mode, onClose }) {
               </div>
               <button onClick={onClose} className="absolute top-5 right-5 h-8 w-8 rounded-lg border border-slate-200 flex items-center justify-center hover:bg-slate-50"><X className="h-4 w-4" /></button>
               <div className="flex gap-1 mt-4 p-1 bg-slate-100 rounded-xl">
-                <button onClick={() => changeTab('signup')} className={`flex-1 py-2 rounded-lg text-[13px] font-semibold transition ${tab==='signup' ? 'bg-white shadow-sm text-slate-900' : 'text-slate-500'}`}>{t('auth.signup')}</button>
+                {allowSignup ? <button onClick={() => changeTab('signup')} className={`flex-1 py-2 rounded-lg text-[13px] font-semibold transition ${tab==='signup' ? 'bg-white shadow-sm text-slate-900' : 'text-slate-500'}`}>{t('auth.signup')}</button> : null}
                 <button onClick={() => changeTab('login')} className={`flex-1 py-2 rounded-lg text-[13px] font-semibold transition ${tab==='login' ? 'bg-white shadow-sm text-slate-900' : 'text-slate-500'}`}>{t('auth.login')}</button>
               </div>
             </div>
@@ -105,7 +114,7 @@ export default function AuthModal({ open, mode, onClose }) {
               </div>}
               {(tab === 'login' || tab === 'signup' || tab === 'reset') && <div>
                 <label className="text-[12.5px] font-medium text-slate-600 mb-1 block">{t('auth.password')}</label>
-                <div className="relative"><input type={showPassword ? 'text' : 'password'} value={form.password} onChange={(e) => set('password', e.target.value)} required minLength={6} className="field pr-10" placeholder="••••••••" /><button type="button" aria-label={showPassword ? t('auth.hidePassword') : t('auth.showPassword')} onClick={() => setShowPassword((value) => !value)} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-700">{showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}</button></div>
+                <div className="relative"><input type={showPassword ? 'text' : 'password'} value={form.password} onChange={(e) => set('password', e.target.value)} required minLength={tab === 'signup' || tab === 'reset' ? 8 : 1} className="field pr-10" placeholder="••••••••" /><button type="button" aria-label={showPassword ? t('auth.hidePassword') : t('auth.showPassword')} onClick={() => setShowPassword((value) => !value)} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-700">{showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}</button></div>
               </div>}
               {tab === 'signup' && <div>
                 <label className="text-[12.5px] font-medium text-slate-600 mb-1 block">Confirm password</label>
@@ -124,9 +133,9 @@ export default function AuthModal({ open, mode, onClose }) {
 
               {tab === 'login' && <button type="button" onClick={() => changeTab('forgot')} className="w-full text-center text-[12.5px] text-blue-600 hover:text-blue-700">{t('auth.forgotPassword')}</button>}
 
-              <div className="text-center text-[12.5px] text-slate-500">
+              {allowSignup ? <div className="text-center text-[12.5px] text-slate-500">
                 {tab === 'signup' ? (<button type="button" onClick={() => changeTab('login')} className="hover:text-blue-600">{t('auth.switchToLogin')}</button>) : (tab === 'login' ? <button type="button" onClick={() => changeTab('signup')} className="hover:text-blue-600">{t('auth.switchToSignup')}</button> : null)}
-              </div>
+              </div> : null}
             </form>
           </motion.div>
         </motion.div>

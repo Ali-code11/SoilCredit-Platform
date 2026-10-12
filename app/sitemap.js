@@ -1,4 +1,9 @@
-export default function sitemap() {
+import { getPublishedArticles } from '@/lib/news';
+
+export const dynamic = 'force-dynamic';
+
+export default async function sitemap() {
+  const articles = await getPublishedArticles();
   return [
     {
       url: 'https://soilcredit.net/',
@@ -12,5 +17,11 @@ export default function sitemap() {
       changeFrequency: 'weekly',
       priority: 0.7,
     },
+    ...articles.map((article) => ({
+      url: `https://soilcredit.net/news/${encodeURIComponent(article.slug)}`,
+      lastModified: article.publishedAt ? new Date(article.publishedAt) : new Date(),
+      changeFrequency: 'monthly',
+      priority: 0.6,
+    })),
   ];
 }

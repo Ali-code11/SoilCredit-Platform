@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Plus, Edit3, Trash2, X, Loader2, MapPin, Leaf, Coins, TrendingUp, Store, CheckCircle2, UploadCloud } from 'lucide-react';
 import { useAuth, useLang } from '@/lib/providers';
 import { AZERBAIJAN_REGION_GROUPS } from '@/lib/constants/regions';
+import { SUPPORTED_LAND_COUNTRIES } from '@/lib/constants/locations';
 
 const MAX_LAND_IMAGES = 3;
 
@@ -358,7 +359,7 @@ function LandModal({ open, land, onClose, onSaved }) {
             <div className="grid sm:grid-cols-2 gap-3">
               <FormLabel label={t('dash.landName')}><input value={f.name} onChange={e => set('name', e.target.value)} required className="field" placeholder="Ganja Foothills" /></FormLabel>
               <FormLabel label="Country"><select value={f.country} onChange={(e) => handleCountryChange(e.target.value)} className="field">
-                {Object.keys(COUNTRY_CITY_FOCUS).map((country) => <option key={country} value={country}>{country}</option>)}
+                {SUPPORTED_LAND_COUNTRIES.map((country) => <option key={country} value={country}>{country}</option>)}
               </select></FormLabel>
               <FormLabel label="City / Region"><select value={f.city} onChange={(e) => { set('city', e.target.value); set('location', getLocationText(f.country, e.target.value)); }} className="field">
                 {!isKnownCityOrRegion && <optgroup label="Mövcud dəyər"><option value={f.city}>{f.city}</option></optgroup>}

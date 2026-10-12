@@ -33,7 +33,7 @@ export default async function NewsPage() {
               {articles.map((article) => (
                 <article key={article.id} className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
                   {article.coverImageUrl ? (
-                    <img src={article.coverImageUrl} alt="" className="h-52 w-full object-cover" />
+                    <img src={article.coverImageUrl} alt={article.title} className="h-52 w-full object-cover" />
                   ) : (
                     <div className="h-52 bg-gradient-to-br from-blue-100 via-slate-50 to-emerald-100" aria-hidden="true" />
                   )}

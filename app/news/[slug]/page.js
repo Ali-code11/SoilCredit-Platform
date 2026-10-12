@@ -44,7 +44,7 @@ export default async function ArticlePage({ params }) {
           <h1 className="mt-3 font-display text-4xl font-bold leading-tight text-slate-900 sm:text-5xl">{article.title}</h1>
           <p className="mt-5 text-lg leading-8 text-slate-600">{article.summary}</p>
         </header>
-        {article.coverImageUrl ? <img src={article.coverImageUrl} alt="" className="mt-9 max-h-[520px] w-full rounded-3xl object-cover" /> : null}
+        {article.coverImageUrl ? <img src={article.coverImageUrl} alt={article.title} className="mt-9 max-h-[520px] w-full rounded-3xl object-cover" /> : null}
         <div className="mt-9 whitespace-pre-wrap break-words text-base leading-8 text-slate-700">{article.content}</div>
       </article>
       <Footer />

@@ -113,12 +113,12 @@ export default function Calculator() {
             <div className="absolute -top-20 -right-20 h-56 w-56 rounded-full bg-blue-100/60 blur-2xl" />
             <div className="relative">
               <div className="flex items-center justify-between mb-5">
-                <div className="flex items-center gap-2"><span className="font-display font-semibold text-lg text-slate-900">Estimated Impact</span><span className="text-[10.5px] uppercase tracking-widest text-emerald-600 font-semibold px-2 py-0.5 rounded-full bg-emerald-50 border border-emerald-200">Live</span></div>
+                <div className="flex items-center gap-2"><span className="font-display font-semibold text-lg text-slate-900">Estimated Impact</span><span className="text-[10.5px] uppercase tracking-widest text-blue-700 font-semibold px-2 py-0.5 rounded-full bg-blue-50 border border-blue-200">{t('calc.status')}</span></div>
               </div>
               <div className="grid sm:grid-cols-3 gap-3 mb-5">
                 <ResultCard icon={Leaf} label={t('calc.carbonYr')} value={result ? result.estimatedCarbonPerYear : 0} suffix=" tCO₂" sub={result ? `${result.tenYearCarbon.toLocaleString()} t / 10y` : t('calc.empty')} valueType="carbon" />
-                <ResultCard icon={Coins} label={t('calc.creditsYr')} value={result ? Math.round(result.creditsPerYear) : 0} sub={result ? `@ $${result.creditPrice}` : 'Verra-aligned'} valueType="credits" />
-                <ResultCard icon={TrendingUp} label={t('calc.incomeYr')} value={result ? Math.round(result.annualIncomeUSD) : 0} prefix="$" sub={result ? `$${Math.round(result.tenYearIncomeUSD).toLocaleString()} / 10y` : 'Paid quarterly'} highlight valueType="income" />
+                <ResultCard icon={Coins} label={t('calc.creditsYr')} value={result ? Math.round(result.creditsPerYear) : 0} sub={result ? `@ $${result.creditPrice}` : t('calc.estimateOnly')} valueType="credits" />
+                <ResultCard icon={TrendingUp} label={t('calc.incomeYr')} value={result ? Math.round(result.annualIncomeUSD) : 0} prefix="$" sub={result ? `$${Math.round(result.tenYearIncomeUSD).toLocaleString()} / 10y · ${t('calc.notPayment')}` : t('calc.notPayment')} highlight valueType="income" />
               </div>
               <div className="rounded-2xl bg-slate-50 border border-slate-100 p-4">
                 <div className="flex items-center justify-between mb-2">
@@ -127,7 +127,7 @@ export default function Calculator() {
                 </div>
                 <div className="h-[200px]">
                   <ResponsiveContainer width="100%" height="100%">
-                    <AreaChart data={result?.projection || Array.from({length:10}, (_,i)=>({ year: 2025+i, income: 0 }))} margin={{ top: 5, right: 10, left: 0, bottom: 0 }}>
+                    <AreaChart data={result?.projection || Array.from({length:10}, (_,i)=>({ year: new Date().getFullYear()+i, income: 0 }))} margin={{ top: 5, right: 10, left: 0, bottom: 0 }}>
                       <defs><linearGradient id="gA" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stopColor="#2563eb" stopOpacity={0.5} /><stop offset="1" stopColor="#10b981" stopOpacity={0} /></linearGradient></defs>
                       <CartesianGrid stroke="#e2e8f0" vertical={false} />
                       <XAxis dataKey="year" tick={{ fill: '#94a3b8', fontSize: 11 }} axisLine={false} tickLine={false} />

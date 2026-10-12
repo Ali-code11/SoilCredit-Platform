@@ -3,6 +3,8 @@ import { v4 as uuidv4 } from 'uuid';
 import { Resend } from 'resend';
 import crypto from 'crypto';
 import { ensureNewsIndexes, getDb } from '@/lib/mongodb';
+import { createSession, findActiveSession, SESSION_MAX_AGE_SECONDS } from '@/lib/session.mjs';
+import { SUPPORTED_LAND_COUNTRIES } from '@/lib/constants/locations';
 import { z } from 'zod';
 
 /* ---------- crypto helpers ---------- */
@@ -71,7 +73,7 @@ function estimate({ area, soil, region, forestType, vegetation }) {
   const projection = Array.from({ length: 10 }, (_, i) => {
     const yr = i + 1; const maturity = 1 - Math.exp(-yr / 4);
     const carbon = +(perYear * yr * (0.6 + 0.4 * maturity)).toFixed(2);
-    return { year: 2025 + i, carbon, credits: carbon, income: +(carbon * CREDIT_PRICE_USD).toFixed(2) };
+    return { year: new Date().getFullYear() + i, carbon, credits: carbon, income: +(carbon * CREDIT_PRICE_USD).toFixed(2) };
   });
   return {
     estimatedCarbonPerYear: +perYear.toFixed(2),
@@ -89,11 +91,11 @@ async function currentUser(req) {
   const token = getSessionToken(req);
   if (!token) return null;
   const db = await getDb();
-  const session = await db.collection('sessions').findOne({ token });
+  const session = await findActiveSession(db, token);
   if (!session) return null;
   const user = await db.collection('users').findOne({ id: session.userId });
   if (!user) return null;
-  const { hash, salt, _id, ...pub } = user; return pub;
+  return publicUser(user);
 }
 
 function getSessionToken(req) {
@@ -108,9 +110,24 @@ function withSessionCookie(response, token) {
     sameSite: 'lax',
     secure: process.env.NODE_ENV === 'production',
     path: '/',
-    maxAge: 60 * 60 * 24 * 30,
+    maxAge: SESSION_MAX_AGE_SECONDS,
   });
   return response;
+}
+
+function publicUser(user) {
+  const publicFields = ['id', 'email', 'name', 'role', 'company', 'emailVerified', 'createdAt'];
+  return Object.fromEntries(publicFields.filter((key) => user[key] !== undefined).map((key) => [key, user[key]]));
+}
+
+function escapeHtml(value) {
+  return String(value).replace(/[&<>"']/g, (character) => ({
+    '&': '&amp;',
+    '<': '&lt;',
+    '>': '&gt;',
+    '"': '&quot;',
+    "'": '&#39;',
+  })[character]);
 }
 
 function clearSessionCookie(response) {
@@ -180,7 +197,10 @@ async function handle(req, params) {
       const db = await getDb();
       const articles = db.collection('newsArticles');
       await ensureNewsIndexes(articles);
-      const article = await articles.findOne({ slug: publicArticleMatch[1], status: 'published' }, { projection: { _id: 0 } });
+      const article = await articles.findOne(
+        { slug: publicArticleMatch[1], status: 'published' },
+        { projection: { _id: 0, id: 1, title: 1, slug: 1, summary: 1, content: 1, coverImageUrl: 1, publishedAt: 1 } },
+      );
       if (!article) return err('Article not found', 404);
       return ok({ article });
     }
@@ -196,7 +216,19 @@ async function handle(req, params) {
     }
 
     if (route === 'calculator' && method === 'POST') {
-      const body = await json(req); const result = estimate(body);
+      const body = await json(req);
+      const validOptions = {
+        soil: Object.keys(FACTORS.soil),
+        region: Object.keys(FACTORS.region),
+        forestType: Object.keys(FACTORS.forestType),
+        vegetation: Object.keys(FACTORS.vegetation),
+      };
+      const area = Number(body?.area);
+      if (!Number.isFinite(area) || area <= 0 || area > 10000) return err('Land area must be between 0 and 10,000 hectares.', 400);
+      for (const [field, allowed] of Object.entries(validOptions)) {
+        if (!allowed.includes(body[field])) return err(`Unsupported ${field} value.`, 400);
+      }
+      const result = estimate({ ...body, area });
       const db = await getDb();
       await db.collection('calculations').insertOne({ id: uuidv4(), inputs: body, result, createdAt: new Date().toISOString() });
       return ok(result);
@@ -244,11 +276,10 @@ async function handle(req, params) {
       await sendEmail({
         to: email,
         subject: 'SoilCredit account verification',
-        html: `<div style="font-family:Arial,sans-serif;max-width:560px;margin:auto;color:#0f172a"><h2 style="color:#2563eb">SoilCredit account verification</h2><p>Hello ${name},</p><p>Your verification code is:</p><p style="font-size:32px;font-weight:700;letter-spacing:8px;color:#059669">${verificationCode}</p><p>Enter this 6-digit code in SoilCredit to verify your email address.</p><p style="color:#64748b">This code expires in 10 minutes. If you did not create this account, you can ignore this email.</p></div>`,
+        html: `<div style="font-family:Arial,sans-serif;max-width:560px;margin:auto;color:#0f172a"><h2 style="color:#2563eb">SoilCredit account verification</h2><p>Hello ${escapeHtml(name)},</p><p>Your verification code is:</p><p style="font-size:32px;font-weight:700;letter-spacing:8px;color:#059669">${verificationCode}</p><p>Enter this 6-digit code in SoilCredit to verify your email address.</p><p style="color:#64748b">This code expires in 10 minutes. If you did not create this account, you can ignore this email.</p></div>`,
       });
       await db.collection('users').insertOne(user);
-      const { hash: _h, salt: _s, emailVerificationCodeHash: _vc, emailVerificationExpiresAt: _ve, emailVerificationLastSentAt: _vs, emailVerificationAttempts: _va, _id, ...pub } = user;
-      return ok({ user: pub, emailSent: true });
+      return ok({ user: publicUser(user), emailSent: true });
     }
 
     if (route === 'auth/login' && method === 'POST') {
@@ -261,9 +292,8 @@ async function handle(req, params) {
       if (!verifyPassword(password, u.salt, u.hash)) return err('Invalid credentials', 401);
       if (u.emailVerified === false) return NextResponse.json({ ok: false, error: 'Please verify your email before signing in', code: 'EMAIL_NOT_VERIFIED', email: u.email }, { status: 403 });
       const token = uuidv4();
-      await db.collection('sessions').insertOne({ token, userId: u.id, createdAt: new Date().toISOString() });
-      const { hash: _h, salt: _s, _id, ...pub } = u;
-      return withSessionCookie(ok({ token, user: pub }), token);
+      await db.collection('sessions').insertOne(createSession(token, u.id));
+      return withSessionCookie(ok({ token, user: publicUser(u) }), token);
     }
 
     if (route === 'auth/verify-email' && (method === 'POST' || method === 'GET')) {
@@ -288,9 +318,8 @@ async function handle(req, params) {
       if (!user.emailVerificationExpiresAt || new Date(user.emailVerificationExpiresAt) < new Date()) return err('Invalid or expired verification code', 400);
       await db.collection('users').updateOne({ id: user.id }, { $set: { emailVerified: true }, $unset: { emailVerificationCodeHash: '', emailVerificationToken: '', emailVerificationExpiresAt: '', emailVerificationLastSentAt: '', emailVerificationAttempts: '' } });
       const token = uuidv4();
-      await db.collection('sessions').insertOne({ token, userId: user.id, createdAt: new Date().toISOString() });
-      const { hash: _h, salt: _s, emailVerificationCodeHash: _vc, emailVerificationExpiresAt: _ve, emailVerificationLastSentAt: _vs, emailVerificationAttempts: _va, emailVerificationToken: _vt, _id, ...pub } = user;
-      return withSessionCookie(ok({ message: 'Email verified successfully', token, user: { ...pub, emailVerified: true } }), token);
+      await db.collection('sessions').insertOne(createSession(token, user.id));
+      return withSessionCookie(ok({ message: 'Email verified successfully', token, user: { ...publicUser(user), emailVerified: true } }), token);
     }
 
     if (route === 'auth/resend-verification' && method === 'POST') {
@@ -344,7 +373,7 @@ async function handle(req, params) {
       const { salt, hash } = hashPassword(password);
       await db.collection('users').updateOne({ id: user.id }, { $set: { salt, hash }, $unset: { passwordResetToken: '', passwordResetExpiresAt: '' } });
       await db.collection('sessions').deleteMany({ userId: user.id });
-      return ok({ message: 'Password reset successfully' });
+      return clearSessionCookie(ok({ message: 'Password reset successfully' }));
     }
 
     if (route === 'auth/me' && method === 'GET') {
@@ -449,10 +478,22 @@ async function handle(req, params) {
       const u = await currentUser(req); if (!u) return err('Unauthenticated', 401);
       if (u.role !== 'landowner') return err('Only landowners can add land', 403);
       const b = await json(req);
+      const coordinatesProvided = b.locationCoordinates !== undefined || b.locationDetails !== undefined;
       const locationCoordinates = b.locationCoordinates || b.locationDetails || null;
       if (!locationCoordinates || !Number.isFinite(Number(locationCoordinates.latitude)) || !Number.isFinite(Number(locationCoordinates.longitude))) {
         return err('Please select the location of your land on the map.', 400);
       }
+      const area = Number(b.area);
+      if (!Number.isFinite(area) || area <= 0) return err('Land area must be a positive number.', 400);
+      if (b.name !== undefined && (typeof b.name !== 'string' || !b.name.trim())) return err('Land name is required.', 400);
+      if (b.country && !SUPPORTED_LAND_COUNTRIES.includes(b.country)) return err('Unsupported land country.', 400);
+      if (Number(locationCoordinates.latitude) < -90 || Number(locationCoordinates.latitude) > 90 || Number(locationCoordinates.longitude) < -180 || Number(locationCoordinates.longitude) > 180) {
+        return err('Land coordinates are outside the valid range.', 400);
+      }
+      if (b.soil && !['sandy', 'loamy', 'clay', 'peat', 'silty'].includes(b.soil)) return err('Unsupported soil type.', 400);
+      if (b.region && !['caspian', 'temperate', 'tropical', 'arid', 'mediterranean', 'boreal'].includes(b.region)) return err('Unsupported region.', 400);
+      if (b.forestType && !['primary', 'secondary', 'plantation', 'agroforestry', 'grassland', 'wetland'].includes(b.forestType)) return err('Unsupported vegetation type.', 400);
+      if (b.vegetation && !['sparse', 'moderate', 'dense', 'veryDense'].includes(b.vegetation)) return err('Unsupported vegetation density.', 400);
       if (Array.isArray(b.images) && b.images.length > 3) return err('You can upload a maximum of 3 images.', 400);
       const locationText = b.location || [b.city, b.country].filter(Boolean).join(', ') || '';
       const safeImages = Array.isArray(b.images) ? b.images.slice(0, 3).map((img, index) => ({
@@ -465,7 +506,7 @@ async function handle(req, params) {
       const est = estimate({ area: b.area, soil: b.soil, region: b.region, forestType: b.forestType, vegetation: b.vegetation });
       const land = {
         id: uuidv4(), ownerId: u.id, ownerName: u.name,
-        name: b.name || 'Untitled Plot',
+        name: typeof b.name === 'string' ? b.name.trim() : 'Untitled Plot',
         country: b.country || 'Azerbaijan',
         city: b.city || 'Baku',
         location: locationText,
@@ -480,7 +521,7 @@ async function handle(req, params) {
           longitude: Number(locationCoordinates.longitude),
         },
         images: safeImages,
-        area: Number(b.area) || 0,
+        area,
         soil: b.soil || 'loamy',
         region: b.region || 'temperate',
         forestType: b.forestType || 'primary',
@@ -519,8 +560,25 @@ async function handle(req, params) {
         if (Array.isArray(b.images) && b.images.length > 3) return err('You can upload a maximum of 3 images.', 400);
         const locationCoordinates = b.locationCoordinates || b.locationDetails || null;
         const locationText = b.location || [b.city, b.country].filter(Boolean).join(', ') || '';
-        ['name','country','city','location','area','soil','region','forestType','vegetation','description','priceCredit','forSale','creditsAvailable'].forEach(k => { if (b[k] !== undefined) upd[k] = b[k]; });
-        if (locationCoordinates && Number.isFinite(Number(locationCoordinates.latitude)) && Number.isFinite(Number(locationCoordinates.longitude))) {
+        if (b.name !== undefined && (typeof b.name !== 'string' || !b.name.trim())) return err('Land name is required.', 400);
+        if (b.area !== undefined && (!Number.isFinite(Number(b.area)) || Number(b.area) <= 0)) return err('Land area must be a positive number.', 400);
+        if (b.country !== undefined && !SUPPORTED_LAND_COUNTRIES.includes(b.country)) return err('Unsupported land country.', 400);
+        if (b.priceCredit !== undefined && (!Number.isFinite(Number(b.priceCredit)) || Number(b.priceCredit) <= 0)) return err('Credit price must be a positive number.', 400);
+        if (b.forSale !== undefined && typeof b.forSale !== 'boolean') return err('forSale must be a boolean.', 400);
+        if (b.soil !== undefined && !['sandy', 'loamy', 'clay', 'peat', 'silty'].includes(b.soil)) return err('Unsupported soil type.', 400);
+        if (b.region !== undefined && !['caspian', 'temperate', 'tropical', 'arid', 'mediterranean', 'boreal'].includes(b.region)) return err('Unsupported region.', 400);
+        if (b.forestType !== undefined && !['primary', 'secondary', 'plantation', 'agroforestry', 'grassland', 'wetland'].includes(b.forestType)) return err('Unsupported vegetation type.', 400);
+        if (b.vegetation !== undefined && !['sparse', 'moderate', 'dense', 'veryDense'].includes(b.vegetation)) return err('Unsupported vegetation density.', 400);
+        ['name','country','city','location','area','soil','region','forestType','vegetation','description','priceCredit','forSale'].forEach(k => {
+          if (b[k] !== undefined) upd[k] = k === 'area' || k === 'priceCredit' ? Number(b[k]) : k === 'name' ? b[k].trim() : b[k];
+        });
+        if (coordinatesProvided && (!locationCoordinates || !Number.isFinite(Number(locationCoordinates.latitude)) || !Number.isFinite(Number(locationCoordinates.longitude)))) {
+          return err('Please select the location of your land on the map.', 400);
+        }
+        if (locationCoordinates) {
+          if (Number(locationCoordinates.latitude) < -90 || Number(locationCoordinates.latitude) > 90 || Number(locationCoordinates.longitude) < -180 || Number(locationCoordinates.longitude) > 180) {
+            return err('Land coordinates are outside the valid range.', 400);
+          }
           upd.locationCoordinates = { latitude: Number(locationCoordinates.latitude), longitude: Number(locationCoordinates.longitude) };
           upd.locationDetails = {
             country: b.country || land.country || 'Azerbaijan',
@@ -559,7 +617,15 @@ async function handle(req, params) {
       const db = await getDb(); const land = await db.collection('lands').findOne({ id: carbonAdd[1] });
       if (!land) return err('Not found', 404); if (land.ownerId !== u.id) return err('Forbidden', 403);
       const b = await json(req);
-      const entry = { id: uuidv4(), date: b.date || new Date().toISOString().slice(0,10), tCO2: Number(b.tCO2) || 0, note: b.note || '', method: b.method || 'satellite' };
+      const tCO2 = Number(b.tCO2);
+      const entryDate = b.date || new Date().toISOString().slice(0, 10);
+      const method = b.method || 'satellite';
+      if (!Number.isFinite(tCO2) || tCO2 <= 0) return err('Carbon amount must be a positive number.', 400);
+      const parsedEntryDate = new Date(`${entryDate}T00:00:00Z`);
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(entryDate) || Number.isNaN(parsedEntryDate.getTime()) || parsedEntryDate.toISOString().slice(0, 10) !== entryDate) return err('Carbon entry date must use YYYY-MM-DD.', 400);
+      if (typeof method !== 'string' || !['satellite', 'in-situ', 'lidar', 'drone'].includes(method)) return err('Unsupported carbon measurement method.', 400);
+      if (b.note !== undefined && (typeof b.note !== 'string' || b.note.length > 1000)) return err('Carbon entry note must be 1,000 characters or fewer.', 400);
+      const entry = { id: uuidv4(), date: entryDate, tCO2, note: b.note || '', method };
       const entries = [...(land.carbonEntries || []), entry];
       const total = entries.reduce((a, e) => a + (e.tCO2 || 0), 0);
       await db.collection('lands').updateOne({ id: land.id }, { $set: { carbonEntries: entries, creditsAvailable: total - (land.creditsSold || 0) } });
@@ -573,6 +639,7 @@ async function handle(req, params) {
       if (!land) return err('Not found', 404); if (land.ownerId !== u.id) return err('Forbidden', 403);
       const entries = (land.carbonEntries || []).filter(e => e.id !== carbonDel[2]);
       const total = entries.reduce((a, e) => a + (e.tCO2 || 0), 0);
+      if (total < (land.creditsSold || 0)) return err('This entry cannot be removed because some credits have already been purchased.', 409);
       await db.collection('lands').updateOne({ id: land.id }, { $set: { carbonEntries: entries, creditsAvailable: total - (land.creditsSold || 0) } });
       return ok({ totalCredits: total });
     }
@@ -580,7 +647,32 @@ async function handle(req, params) {
     /* ------ MARKETPLACE (public listings for sale) ------ */
     if (route === 'marketplace' && method === 'GET') {
       const db = await getDb();
-      const lands = await db.collection('lands').find({ forSale: true }).sort({ createdAt: -1 }).toArray();
+      const lands = await db.collection('lands').find({ forSale: true })
+        .project({
+          _id: 0,
+          id: 1,
+          name: 1,
+          ownerName: 1,
+          country: 1,
+          city: 1,
+          location: 1,
+          locationCoordinates: 1,
+          images: 1,
+          area: 1,
+          soil: 1,
+          region: 1,
+          forestType: 1,
+          vegetation: 1,
+          description: 1,
+          estimate: 1,
+          forSale: 1,
+          priceCredit: 1,
+          creditsAvailable: 1,
+          creditsSold: 1,
+          createdAt: 1,
+        })
+        .sort({ createdAt: -1 })
+        .toArray();
       return ok({ listings: lands });
     }
 
@@ -589,16 +681,34 @@ async function handle(req, params) {
       const u = await currentUser(req); if (!u) return err('Unauthenticated', 401);
       if (u.role !== 'company') return err('Only companies can purchase credits', 403);
       const b = await json(req);
-      const landId = b.landId; const qty = Math.max(1, Number(b.quantity) || 1);
+      const landId = typeof b.landId === 'string' ? b.landId : '';
+      const qty = Number(b.quantity);
+      if (!landId || !Number.isSafeInteger(qty) || qty < 1) return err('A land ID and a positive whole-number quantity are required.', 400);
       const db = await getDb();
       const land = await db.collection('lands').findOne({ id: landId });
       if (!land || !land.forSale) return err('Not available', 404);
       const available = (land.creditsAvailable || 0);
       if (qty > available) return err('Not enough credits available');
-      const total = qty * (land.priceCredit || CREDIT_PRICE_USD);
-      const purchase = { id: uuidv4(), companyId: u.id, companyName: u.company || u.name, landId, landName: land.name, ownerId: land.ownerId, quantity: qty, pricePerCredit: land.priceCredit || CREDIT_PRICE_USD, totalUSD: +total.toFixed(2), createdAt: new Date().toISOString() };
-      await db.collection('purchases').insertOne(purchase);
-      await db.collection('lands').updateOne({ id: land.id }, { $set: { creditsSold: (land.creditsSold || 0) + qty, creditsAvailable: available - qty } });
+      const pricePerCredit = Number(land.priceCredit || CREDIT_PRICE_USD);
+      if (!Number.isFinite(pricePerCredit) || pricePerCredit <= 0) return err('This listing has an invalid credit price.', 409);
+      const total = qty * pricePerCredit;
+      if (!Number.isFinite(total)) return err('Purchase total is outside the supported range.', 400);
+      const purchase = { id: uuidv4(), companyId: u.id, companyName: u.company || u.name, landId, landName: land.name, ownerId: land.ownerId, quantity: qty, pricePerCredit, totalUSD: +total.toFixed(2), createdAt: new Date().toISOString() };
+      const reservation = await db.collection('lands').updateOne(
+        { id: landId, forSale: true, creditsAvailable: { $gte: qty } },
+        { $inc: { creditsAvailable: -qty, creditsSold: qty } },
+      );
+      if (!reservation.matchedCount) return err('Not enough credits available.', 409);
+      try {
+        await db.collection('purchases').insertOne(purchase);
+      } catch (purchaseError) {
+        try {
+          await db.collection('lands').updateOne({ id: landId }, { $inc: { creditsAvailable: qty, creditsSold: -qty } });
+        } catch (rollbackError) {
+          console.error('Purchase inventory rollback failed:', { landId, message: rollbackError.message });
+        }
+        throw purchaseError;
+      }
       return ok({ purchase });
     }
 
