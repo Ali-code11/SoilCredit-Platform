@@ -110,7 +110,7 @@ export default function Footer() {
             {
               title: t('footer.company'),
               links: [
-                { label: t('footer.about'), href: '/#why' },
+                { label: t('footer.about'), href: '/about' },
                 { label: t('footer.news'), href: '/news' },
                 { label: t('footer.contact'), href: 'mailto:soilcreditazerbaijan@gmail.com' },
               ],

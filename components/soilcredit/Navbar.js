@@ -7,7 +7,7 @@ import { useTheme } from 'next-themes';
 import Link from 'next/link';
 import { useRouter, usePathname } from 'next/navigation';
 
-export default function Navbar({ onOpenAuth, onOpenTeam }) {
+export default function Navbar({ onOpenAuth }) {
   const { lang, setLang, t } = useLang();
   const { user, logout } = useAuth();
   const { resolvedTheme, setTheme } = useTheme();
@@ -44,11 +44,6 @@ export default function Navbar({ onOpenAuth, onOpenTeam }) {
   }, []);
 
   const handleNavClick = (hash) => {
-    if (hash === '#team') {
-      if (pathname === '/') onOpenTeam?.();
-      else router.push('/#team');
-      return;
-    }
     if (pathname === '/') {
       // If already on home page, just scroll to section
       const element = document.getElementById(hash.slice(1));
@@ -63,11 +58,9 @@ export default function Navbar({ onOpenAuth, onOpenTeam }) {
 
   const links = [
     { label: t('nav.home'), href: '#home' },
-    { label: t('nav.why'), href: '#why' },
-    { label: t('nav.how'), href: '#how' },
     { label: t('nav.calc'), href: '#calculator' },
     { label: t('nav.market'), href: '#marketplace' },
-    { label: t('team.nav'), href: '#team' },
+    { label: t('nav.about'), href: '/about' },
     { label: t('nav.faq'), href: '#faq' },
     { label: t('nav.contact'), href: '#footer' },
   ];
@@ -88,7 +81,11 @@ export default function Navbar({ onOpenAuth, onOpenTeam }) {
 
             <nav className="hidden lg:flex items-center gap-1">
               {links.map((l) => (
-                <button key={l.label} onClick={() => handleNavClick(l.href)} className={`px-3 py-2 text-[14px] font-medium transition ${isHomeDark ? 'text-white/75 hover:text-white' : 'text-slate-600 hover:text-blue-600'}`}>{l.label}</button>
+                l.href.startsWith('/') ? (
+                  <Link key={l.href} href={l.href} className={`px-3 py-2 text-[14px] font-medium transition ${isHomeDark ? 'text-white/75 hover:text-white' : 'text-slate-600 hover:text-blue-600'}`}>{l.label}</Link>
+                ) : (
+                  <button key={l.href} onClick={() => handleNavClick(l.href)} className={`px-3 py-2 text-[14px] font-medium transition ${isHomeDark ? 'text-white/75 hover:text-white' : 'text-slate-600 hover:text-blue-600'}`}>{l.label}</button>
+                )
               ))}
               <Link href="/news" className={`px-3 py-2 text-[14px] font-medium transition ${isHomeDark ? 'text-white/75 hover:text-white' : 'text-slate-600 hover:text-blue-600'}`}>{t('nav.news')}</Link>
             </nav>
@@ -160,7 +157,11 @@ export default function Navbar({ onOpenAuth, onOpenTeam }) {
               </div>
               <div className="flex flex-col gap-1">
                 {links.map((l) => (
-                  <button key={l.label} onClick={() => { setOpen(false); handleNavClick(l.href); }} className="px-4 py-3 rounded-xl hover:bg-slate-50 text-slate-700 text-left">{l.label}</button>
+                  l.href.startsWith('/') ? (
+                    <Link key={l.href} href={l.href} onClick={() => setOpen(false)} className="px-4 py-3 rounded-xl hover:bg-slate-50 text-slate-700 text-left">{l.label}</Link>
+                  ) : (
+                    <button key={l.href} onClick={() => { setOpen(false); handleNavClick(l.href); }} className="px-4 py-3 rounded-xl hover:bg-slate-50 text-slate-700 text-left">{l.label}</button>
+                  )
                 ))}
                 <Link href="/news" onClick={() => setOpen(false)} className="px-4 py-3 rounded-xl hover:bg-slate-50 text-slate-700">{t('nav.news')}</Link>
                 <div className="flex items-center gap-2 px-4 py-3"><span className="text-[12px] text-slate-500">{t('nav.language')}:</span>

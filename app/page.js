@@ -1,5 +1,6 @@
 'use client';
 import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import Navbar from '@/components/soilcredit/Navbar';
 import AuthModal from '@/components/soilcredit/AuthModal';
 import Hero from '@/components/soilcredit/Hero';
@@ -8,17 +9,14 @@ import HowItWorks from '@/components/soilcredit/HowItWorks';
 import Features from '@/components/soilcredit/Features';
 import Calculator from '@/components/soilcredit/Calculator';
 import Marketplace from '@/components/soilcredit/Marketplace';
-import Team from '@/components/soilcredit/Team';
 import FAQ from '@/components/soilcredit/FAQ';
 import Footer from '@/components/soilcredit/Footer';
 
 function App() {
   const [auth, setAuth] = useState({ open: false, mode: 'signup' });
-  const [teamOpen, setTeamOpen] = useState(false);
+  const router = useRouter();
   const openAuth = (mode = 'signup') => setAuth({ open: true, mode });
   const closeAuth = () => setAuth({ open: false, mode: auth.mode });
-  const openTeam = () => setTeamOpen(true);
-  const closeTeam = () => setTeamOpen(false);
 
   // Scroll to section if hash is in URL
   useEffect(() => {
@@ -28,7 +26,7 @@ function App() {
         let targetId = hash.slice(1);
         try { targetId = decodeURIComponent(targetId); } catch {}
         if (targetId === 'team') {
-          setTeamOpen(true);
+          router.replace('/about#team');
           return;
         }
         const element = document.getElementById(targetId);
@@ -37,14 +35,14 @@ function App() {
         }
       }, 100);
     }
-  }, []);
+  }, [router]);
 
   const marqueeLeft = ['LAND', 'DATA', 'AI', 'CARBON', 'CREDIT', 'FUTURE'];
   const marqueeRight = ['SOILCREDIT', 'TURNING LAND INTO VALUE', 'SATELLITE', 'MARKETPLACE'];
 
   return (
     <main className="site-shell relative bg-white text-slate-900">
-      <Navbar onOpenAuth={openAuth} onOpenTeam={openTeam} />
+      <Navbar onOpenAuth={openAuth} />
       <Hero onOpenAuth={openAuth} />
 
       <div className="overflow-hidden border-y border-slate-200/80 bg-white">
@@ -73,7 +71,6 @@ function App() {
       <Features />
       <Calculator />
       <Marketplace onOpenAuth={openAuth} />
-      <Team isOpen={teamOpen} onOpen={openTeam} onClose={closeTeam} />
       <FAQ />
       <Footer />
       <AuthModal open={auth.open} mode={auth.mode} onClose={closeAuth} />

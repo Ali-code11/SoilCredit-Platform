@@ -66,9 +66,47 @@ test('footer and legal navigation copy is available in both languages', () => {
     assert.notEqual(T.en.legal[key], T.az.legal[key]);
   }
 
-  for (const key of ['news', 'language', 'lightMode', 'darkMode', 'newsManagement', 'switchToLight', 'switchToDark', 'openMenu', 'closeMenu']) {
+  for (const key of ['about', 'news', 'language', 'lightMode', 'darkMode', 'newsManagement', 'switchToLight', 'switchToDark', 'openMenu', 'closeMenu']) {
     assert.ok(T.en.nav[key], `English navigation translation missing: ${key}`);
     assert.ok(T.az.nav[key], `Azerbaijani navigation translation missing: ${key}`);
     assert.notEqual(T.en.nav[key], T.az.nav[key]);
   }
+});
+
+test('About Us content and the existing team are fully localized', () => {
+  const english = T.en.aboutPage;
+  const azerbaijani = T.az.aboutPage;
+  for (const key of [
+    'metadataTitle',
+    'metadataDescription',
+    'eyebrow',
+    'heroTitle',
+    'heroDescription',
+    'exploreMission',
+    'meetTeam',
+    'aboutTitle',
+    'aboutDescription',
+    'missionTitle',
+    'missionDescription',
+    'videoFallback',
+  ]) {
+    assert.ok(english[key], `English About Us copy missing: ${key}`);
+    assert.ok(azerbaijani[key], `Azerbaijani About Us copy missing: ${key}`);
+    assert.notEqual(english[key], azerbaijani[key], `About Us copy was not translated: ${key}`);
+  }
+
+  assert.equal(english.themes.length, 3);
+  assert.equal(azerbaijani.themes.length, 3);
+  for (const [index, theme] of english.themes.entries()) {
+    assert.ok(theme.title && theme.description);
+    assert.ok(azerbaijani.themes[index].title && azerbaijani.themes[index].description);
+    assert.notEqual(theme.title, azerbaijani.themes[index].title);
+    assert.notEqual(theme.description, azerbaijani.themes[index].description);
+  }
+  assert.equal(T.en.team.members.length, 6);
+  assert.equal(T.az.team.members.length, 6);
+  assert.deepEqual(
+    T.en.team.members.map(({ name }) => name),
+    ['Nazrin Abdullayeva', 'Ali Farzalisoy', 'Aysel Baghirova', 'Samangul Seyidzada', 'Habib Gasimzada', 'Rauf Rahimli'],
+  );
 });
