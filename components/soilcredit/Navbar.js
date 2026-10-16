@@ -69,9 +69,10 @@ export default function Navbar({ onOpenAuth, onOpenTeam }) {
     { label: t('nav.market'), href: '#marketplace' },
     { label: t('team.nav'), href: '#team' },
     { label: t('nav.faq'), href: '#faq' },
-    { label: t('nav.contact') || 'Contact', href: '#footer' },
+    { label: t('nav.contact'), href: '#footer' },
   ];
   const isHomeDark = pathname === '/' && !scrolled;
+  const themeIsDark = themeReady && resolvedTheme === 'dark';
 
   return (
     <>
@@ -89,7 +90,7 @@ export default function Navbar({ onOpenAuth, onOpenTeam }) {
               {links.map((l) => (
                 <button key={l.label} onClick={() => handleNavClick(l.href)} className={`px-3 py-2 text-[14px] font-medium transition ${isHomeDark ? 'text-white/75 hover:text-white' : 'text-slate-600 hover:text-blue-600'}`}>{l.label}</button>
               ))}
-              <Link href="/news" className={`px-3 py-2 text-[14px] font-medium transition ${isHomeDark ? 'text-white/75 hover:text-white' : 'text-slate-600 hover:text-blue-600'}`}>News</Link>
+              <Link href="/news" className={`px-3 py-2 text-[14px] font-medium transition ${isHomeDark ? 'text-white/75 hover:text-white' : 'text-slate-600 hover:text-blue-600'}`}>{t('nav.news')}</Link>
             </nav>
 
             <div className="flex items-center gap-2">
@@ -97,8 +98,8 @@ export default function Navbar({ onOpenAuth, onOpenTeam }) {
                 type="button"
                 onClick={toggleTheme}
                 className={`inline-flex h-9 w-9 items-center justify-center rounded-xl border transition ${isHomeDark ? 'border-white/15 bg-white/5 text-white hover:bg-white/10' : 'border-slate-200 bg-white text-slate-600 hover:border-blue-300 hover:text-blue-700'}`}
-                aria-label={`Switch to ${resolvedTheme === 'dark' ? 'light' : 'dark'} mode`}
-                title={`Switch to ${resolvedTheme === 'dark' ? 'light' : 'dark'} mode`}
+                aria-label={themeIsDark ? t('nav.switchToLight') : t('nav.switchToDark')}
+                title={themeIsDark ? t('nav.switchToLight') : t('nav.switchToDark')}
               >
                 {themeReady && resolvedTheme === 'dark' ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
               </button>
@@ -126,7 +127,7 @@ export default function Navbar({ onOpenAuth, onOpenTeam }) {
                           <div className="mt-1 inline-flex text-[10px] uppercase tracking-wider font-semibold px-2 py-0.5 rounded-full bg-blue-50 text-blue-600">{user.role}</div>
                         </div>
                         <Link href="/dashboard" onClick={() => setMenu(false)} className="w-full flex items-center gap-2 px-3 py-2 text-[13px] text-slate-700 hover:bg-slate-50 rounded-lg"><LayoutDashboard className="h-4 w-4" /> {t('nav.dashboard')}</Link>
-                        {user.role === 'admin' ? <Link href="/admin/news" onClick={() => setMenu(false)} className="w-full flex items-center gap-2 px-3 py-2 text-[13px] text-slate-700 hover:bg-slate-50 rounded-lg"><LayoutDashboard className="h-4 w-4" /> News management</Link> : null}
+                        {user.role === 'admin' ? <Link href="/admin/news" onClick={() => setMenu(false)} className="w-full flex items-center gap-2 px-3 py-2 text-[13px] text-slate-700 hover:bg-slate-50 rounded-lg"><LayoutDashboard className="h-4 w-4" /> {t('nav.newsManagement')}</Link> : null}
                         <button onClick={() => { setMenu(false); logout(); }} className="w-full flex items-center gap-2 px-3 py-2 text-[13px] text-rose-600 hover:bg-rose-50 rounded-lg"><LogOut className="h-4 w-4" /> {t('nav.logout')}</button>
                       </motion.div>
                     )}
@@ -139,7 +140,7 @@ export default function Navbar({ onOpenAuth, onOpenTeam }) {
                 </>
               )}
 
-              <button onClick={() => setOpen(true)} className="lg:hidden ml-1 p-2 rounded-lg border border-slate-200 bg-white">
+              <button type="button" onClick={() => setOpen(true)} aria-label={t('nav.openMenu')} aria-expanded={open} className="lg:hidden ml-1 p-2 rounded-lg border border-slate-200 bg-white">
                 <Menu className="h-5 w-5 text-slate-700" />
               </button>
             </div>
@@ -155,14 +156,14 @@ export default function Navbar({ onOpenAuth, onOpenTeam }) {
               className="absolute right-0 top-0 h-full w-[86%] max-w-sm bg-white p-6">
               <div className="flex items-center justify-between mb-8">
                 <div className="flex items-center gap-2"><div className="h-8 w-8 rounded-lg bg-gradient-to-br from-blue-800 to-blue-600 flex items-center justify-center"><Leaf className="h-4 w-4 text-white" strokeWidth={2.5} /></div><span className="font-display font-bold text-lg text-gradient-blue">SoilCredit</span></div>
-                <button onClick={() => setOpen(false)} className="p-2 rounded-lg border border-slate-200"><X className="h-5 w-5" /></button>
+                <button type="button" onClick={() => setOpen(false)} aria-label={t('nav.closeMenu')} className="p-2 rounded-lg border border-slate-200"><X className="h-5 w-5" /></button>
               </div>
               <div className="flex flex-col gap-1">
                 {links.map((l) => (
                   <button key={l.label} onClick={() => { setOpen(false); handleNavClick(l.href); }} className="px-4 py-3 rounded-xl hover:bg-slate-50 text-slate-700 text-left">{l.label}</button>
                 ))}
-                <Link href="/news" onClick={() => setOpen(false)} className="px-4 py-3 rounded-xl hover:bg-slate-50 text-slate-700">News</Link>
-                <div className="flex items-center gap-2 px-4 py-3"><span className="text-[12px] text-slate-500">Language:</span>
+                <Link href="/news" onClick={() => setOpen(false)} className="px-4 py-3 rounded-xl hover:bg-slate-50 text-slate-700">{t('nav.news')}</Link>
+                <div className="flex items-center gap-2 px-4 py-3"><span className="text-[12px] text-slate-500">{t('nav.language')}:</span>
                   <button onClick={() => setLang('en')} className={`text-[12px] font-semibold px-2 py-1 rounded ${lang==='en' ? 'bg-blue-50 text-blue-600' : 'text-slate-500'}`}>EN</button>
                   <button onClick={() => setLang('az')} className={`text-[12px] font-semibold px-2 py-1 rounded ${lang==='az' ? 'bg-blue-50 text-blue-600' : 'text-slate-500'}`}>AZ</button>
                 </div>
@@ -172,12 +173,12 @@ export default function Navbar({ onOpenAuth, onOpenTeam }) {
                   className="mx-4 mt-2 inline-flex items-center gap-2 rounded-xl border border-slate-200 px-4 py-3 text-left text-slate-700"
                 >
                   {themeReady && resolvedTheme === 'dark' ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
-                  {resolvedTheme === 'dark' ? 'Light mode' : 'Dark mode'}
+                  {themeIsDark ? t('nav.lightMode') : t('nav.darkMode')}
                 </button>
                 <div className="mt-4 pt-4 border-t border-slate-100 flex flex-col gap-2">
                   {user ? (<>
                     <Link href="/dashboard" onClick={() => setOpen(false)} className="w-full px-4 py-3 rounded-xl border border-slate-200 text-slate-700 text-center">{t('nav.dashboard')}</Link>
-                    {user.role === 'admin' ? <Link href="/admin/news" onClick={() => setOpen(false)} className="w-full px-4 py-3 rounded-xl border border-slate-200 text-slate-700 text-center">News management</Link> : null}
+                    {user.role === 'admin' ? <Link href="/admin/news" onClick={() => setOpen(false)} className="w-full px-4 py-3 rounded-xl border border-slate-200 text-slate-700 text-center">{t('nav.newsManagement')}</Link> : null}
                     <button onClick={() => { setOpen(false); logout(); }} className="w-full px-4 py-3 rounded-xl border border-rose-200 text-rose-600">{t('nav.logout')}</button>
                   </>) : (<>
                     <button onClick={() => { setOpen(false); onOpenAuth?.('login'); }} className="w-full px-4 py-3 rounded-xl border border-slate-200 text-slate-700">{t('nav.login')}</button>

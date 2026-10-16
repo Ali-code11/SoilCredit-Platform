@@ -1,8 +1,9 @@
 'use client';
 import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { Leaf, Send, CheckCircle2, Linkedin, ArrowRight, Instagram, Facebook } from 'lucide-react';
+import { Leaf, Send, Linkedin, ArrowRight, Instagram, Facebook } from 'lucide-react';
 import { useLang } from '@/lib/providers';
+import Link from 'next/link';
 
 export default function Footer() {
   const { t } = useLang();
@@ -22,12 +23,20 @@ export default function Footer() {
         body: JSON.stringify({ email }),
       });
       const result = await response.json();
-      if (!response.ok || !result.ok) throw new Error(result.error || t('footer.newsletterError'));
-      setMessage(result.message || t('footer.newsletterSuccess'));
+      if (!response.ok || !result.ok) {
+        setMessage(response.status === 429
+          ? t('footer.newsletterRateLimit')
+          : response.status === 400
+            ? t('footer.newsletterInvalid')
+            : t('footer.newsletterError'));
+        setMessageType('error');
+        return;
+      }
+      setMessage(t('footer.newsletterSuccess'));
       setMessageType('success');
       setEmail('');
-    } catch (error) {
-      setMessage(error.message || t('footer.newsletterError'));
+    } catch {
+      setMessage(t('footer.newsletterError'));
       setMessageType('error');
     } finally {
       setSubmitting(false);
@@ -44,7 +53,7 @@ export default function Footer() {
           </div>
           <div className="w-full md:w-auto">
             <form onSubmit={subscribe} className="flex w-full gap-2">
-              <motion.input whileFocus={{ scale: 1.01 }} type="email" autoComplete="email" required maxLength={254} value={email} onChange={e => setEmail(e.target.value)} placeholder="you@earth.co" className="field min-w-0 md:w-72" aria-label={t('footer.newsletterEmail')} />
+              <motion.input whileFocus={{ scale: 1.01 }} type="email" autoComplete="email" required maxLength={254} value={email} onChange={e => setEmail(e.target.value)} placeholder={t('footer.emailPlaceholder')} className="field min-w-0 md:w-72" aria-label={t('footer.newsletterEmail')} />
               <motion.button type="submit" disabled={submitting} whileHover={{ y: -2, scale: 1.01 }} whileTap={{ scale: 0.98 }} className="btn-primary inline-flex shrink-0 items-center gap-1.5 rounded-xl px-5 py-3 text-[13.5px] font-semibold disabled:cursor-wait disabled:opacity-60">
                 {submitting ? t('footer.subscribing') : <>{t('footer.subscribe')} <Send className="h-4 w-4" /></>}
               </motion.button>
@@ -88,10 +97,44 @@ export default function Footer() {
   ))}
 </div>
           </div>
-          {[{ title: 'Product', links: ['Overview', t('nav.calc'), t('nav.market'), t('nav.dashboard')] }, { title: 'Company', links: ['About', 'Careers', 'Press', 'Contact'] }, { title: 'Legal', links: ['Privacy', 'Terms', 'Security', 'Cookies'] }].map((c, i) => (
-            <div key={i}>
-              <div className="text-[12px] uppercase font-semibold text-slate-500 tracking-widest mb-3">{c.title}</div>
-              <ul className="space-y-2">{c.links.map((l, j) => (<li key={j}><motion.a whileHover={{ x: 4 }} href="#" className="text-[13px] text-slate-600 hover:text-blue-600 inline-flex items-center gap-1 group">{l}<ArrowRight className="h-3 w-3 opacity-0 -translate-x-1 group-hover:opacity-100 group-hover:translate-x-0 transition-all" /></motion.a></li>))}</ul>
+          {[
+            {
+              title: t('footer.product'),
+              links: [
+                { label: t('footer.overview'), href: '/#home' },
+                { label: t('nav.calc'), href: '/#calculator' },
+                { label: t('nav.market'), href: '/#marketplace' },
+                { label: t('nav.dashboard'), href: '/dashboard' },
+              ],
+            },
+            {
+              title: t('footer.company'),
+              links: [
+                { label: t('footer.about'), href: '/#why' },
+                { label: t('footer.news'), href: '/news' },
+                { label: t('footer.contact'), href: 'mailto:soilcreditazerbaijan@gmail.com' },
+              ],
+            },
+            {
+              title: t('footer.legal'),
+              links: [
+                { label: t('footer.privacy'), href: '/privacy' },
+                { label: t('footer.terms'), href: '/terms' },
+                { label: t('footer.security'), href: '/security' },
+                { label: t('footer.cookies'), href: '/cookies' },
+              ],
+            },
+          ].map((column) => (
+            <div key={column.title}>
+              <div className="mb-3 text-[12px] font-semibold uppercase tracking-widest text-slate-500">{column.title}</div>
+              <ul className="space-y-2">{column.links.map((link) => (
+                <li key={link.href}>
+                  <Link href={link.href} className="group inline-flex items-center gap-1 text-[13px] text-slate-600 hover:text-blue-600">
+                    {link.label}
+                    <ArrowRight className="h-3 w-3 -translate-x-1 opacity-0 transition-all group-hover:translate-x-0 group-hover:opacity-100" />
+                  </Link>
+                </li>
+              ))}</ul>
             </div>
           ))}
         </div>

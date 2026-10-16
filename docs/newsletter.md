@@ -34,11 +34,15 @@ Create a **Cron Job** in the Render Dashboard using the same repository and bran
 4. Add `NEWSLETTER_WORKER_URL` as the public URL of the web service, ending exactly in `/api/newsletter/worker` (for example, `https://<your-service>.onrender.com/api/newsletter/worker`).
 5. Add `CRON_SECRET` to both the web service and the Cron Job as the same strong, private value. Do not place the secret in the URL, command, or source control.
 
-The cron service only needs these two environment variables; the web service retains the MongoDB and Resend settings. A Cron Job is separate from the web service, so running `npm run start` or the web service by itself does not schedule newsletter processing. Check the Cron Job's **Runs** logs for a processed batch or `No queued campaigns.` and a successful exit status.
+The cron service only needs these two environment variables; the web service retains the MongoDB and Resend settings. A Cron Job is separate from the web service, so running `npm run start` or the web service by itself does not schedule newsletter processing. Check the Cron Job's **Runs** logs for a processed batch or `No queued campaigns.` and a successful exit status. An empty queue is a normal no-op and does not send email.
 
 For a manual invocation, run `node scripts/newsletter-worker.mjs` with those same two environment variables. Each invocation claims one campaign batch. The MongoDB lease prevents concurrent workers from processing the same campaign batch.
 
-Each invocation snapshots up to 250 eligible recipients and sends at most five messages. The queue and per-recipient states persist in MongoDB, so the worker can resume in later invocations; larger lists take multiple runs. Publishing an article does not enqueue a campaign. An administrator must preview and explicitly confirm it in `/admin/newsletter`.
+Publishing an article automatically creates one campaign in the existing MongoDB queue. Drafts do not create campaigns, and editing an already-published article does not create another one. The article ID is unique per campaign. Each worker invocation snapshots up to 250 eligible recipients and sends at most five messages. The queue and per-recipient states persist in MongoDB, so the worker can resume in later invocations; larger lists take multiple runs. No campaign means no email is sent.
+
+The confirmation endpoint records `subscribedAt` and `confirmedAt` together, at the instant double opt-in activates the subscription. A campaign includes only active recipients whose activation time is strictly earlier than the article's `publishedAt`; timestamps are stored and compared as UTC instants. For older active records without `subscribedAt`, `confirmedAt` is used as a compatibility fallback. Unsubscribed recipients are checked again immediately before send.
+
+Each campaign/recipient pair has a unique delivery record and is claimed atomically before sending. Resend uses an idempotency key derived from that stable delivery ID (not the attempt number), so retries and recovery after an uncertain database update reuse the same provider key. Transient and uncertain attempts are retried with backoff while the provider idempotency window is still valid. If the outcome remains uncertain beyond that window, it is held for review rather than automatically resent; permanent rejections can be retried from the admin campaign history.
 
 ## Resend delivery events
 
@@ -56,11 +60,11 @@ Set its signing secret as `RESEND_WEBHOOK_SECRET`. The handler verifies Svix sig
 2. Sign in using an existing MongoDB user whose `role` is `admin`; no public admin registration is provided.
 3. Use a controlled inbox to subscribe, then confirm from the received link.
 4. Preview a published article and send a test message only to an explicitly selected controlled address.
-5. Verify a campaign only with a specifically authorized test audience, then invoke the worker with the configured secret.
+5. Publish a test article to queue it, then invoke the worker with the configured secret against the staging database.
 6. Check campaign and per-recipient states in the admin panel and verify delivery outcomes from the Resend webhook when configured.
 
 The legacy `newsletter` collection is not imported: its records do not establish double-opt-in consent.
 
 Subscription requests are throttled per email address and per client IP. Existing active subscriptions and pending subscriptions still inside the confirmation resend cooldown do not consume the per-IP allowance.
 
-**Production safety:** starting the worker processes campaigns already queued in that database and can send to all confirmed active subscribers in their recipient snapshots. Test locally against a separate staging database and controlled recipient first. Do not manually trigger the production worker merely as a health check.
+**Production safety:** starting the worker processes campaigns already queued in that database and can send to subscribers who confirmed before each article's publication. Test locally against a separate staging database and controlled recipient first. Do not manually trigger the production worker merely as a health check.

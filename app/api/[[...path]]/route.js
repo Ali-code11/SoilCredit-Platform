@@ -4,6 +4,7 @@ import crypto from 'crypto';
 import { ensureNewsIndexes, getDb } from '@/lib/mongodb';
 import { sendEmail as sendResendEmail } from '@/lib/email';
 import { handleNewsletterRoute } from '@/lib/newsletter-api';
+import { createNewsletterCampaign } from '@/lib/newsletter-server';
 import { createSession, findActiveSession, SESSION_MAX_AGE_SECONDS } from '@/lib/session.mjs';
 import { SUPPORTED_LAND_COUNTRIES } from '@/lib/constants/locations';
 import { z } from 'zod';
@@ -415,6 +416,7 @@ async function handle(req, params) {
           updatedAt: now,
         };
         await articles.insertOne(article);
+        if (article.status === 'published') await createNewsletterCampaign(db, article);
         const { _id, ...savedArticle } = article;
         return ok({ article: savedArticle });
       }
@@ -435,6 +437,9 @@ async function handle(req, params) {
           ? (existing.status === 'published' ? existing.publishedAt : now)
           : (existing.publishedAt || null);
         await articles.updateOne({ id }, { $set: { ...parsed.data, publishedAt, updatedAt: now } });
+        if (parsed.data.status === 'published' && existing.status !== 'published') {
+          await createNewsletterCampaign(db, { ...existing, ...parsed.data, publishedAt });
+        }
         const updated = await articles.findOne({ id }, { projection: { _id: 0 } });
         return ok({ article: updated });
       }
@@ -450,6 +455,7 @@ async function handle(req, params) {
         const result = await articles.updateOne({ id }, { $set: update });
         if (!result.matchedCount) return err('Article not found', 404);
         const updated = await articles.findOne({ id }, { projection: { _id: 0 } });
+        if (status === 'published') await createNewsletterCampaign(db, updated);
         return ok({ article: updated });
       }
 

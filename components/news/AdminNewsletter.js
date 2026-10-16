@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
-import { Eye, Loader2, Mail, RefreshCw, Send, Users } from 'lucide-react';
+import { Eye, Loader2, Mail, RefreshCw, Users } from 'lucide-react';
 import { useAuth } from '@/lib/providers';
 
 const initialOverview = {
@@ -85,29 +85,6 @@ export default function AdminNewsletter() {
     }
   };
 
-  const queueCampaign = async () => {
-    if (!preview) return;
-    const title = preview.article.title;
-    const recipients = preview.recipientCount;
-    if (!window.confirm(`Queue “${title}” for ${recipients} confirmed active subscriber${recipients === 1 ? '' : 's'}? This article can only have one campaign; failed recipients can be retried separately.`)) return;
-    setBusy('campaign');
-    setError('');
-    setNotice('');
-    try {
-      const response = await apiFetch('/api/admin/newsletter/campaigns', {
-        method: 'POST',
-        body: JSON.stringify({ articleId }),
-      });
-      if (!response.ok) throw new Error(response.error || 'The campaign could not be queued.');
-      setNotice(response.created ? 'Campaign queued. Delivery begins through the scheduled newsletter worker.' : `This article already has a campaign (${response.campaign.status}); it was not sent again.`);
-      await load();
-    } catch (campaignError) {
-      setError(campaignError.message || 'The campaign could not be queued.');
-    } finally {
-      setBusy('');
-    }
-  };
-
   const sendTest = async (event) => {
     event.preventDefault();
     if (!articleId) return;
@@ -150,7 +127,7 @@ export default function AdminNewsletter() {
         <div>
           <p className="text-sm font-semibold uppercase tracking-[0.16em] text-blue-700">Admin dashboard</p>
           <h1 className="mt-2 font-display text-3xl font-bold text-slate-900 sm:text-4xl">Newsletter</h1>
-          <p className="mt-2 text-sm text-slate-600">Manage confirmed subscribers and one-time article campaigns.</p>
+          <p className="mt-2 text-sm text-slate-600">Manage confirmed subscribers and automatic, one-time article notifications.</p>
         </div>
         <Link href="/admin/news" className="text-sm font-semibold text-blue-700 hover:text-blue-900">Back to news</Link>
       </div>
@@ -175,9 +152,9 @@ export default function AdminNewsletter() {
       <section className="mb-8 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-7">
         <div className="flex items-center gap-2">
           <Mail className="h-5 w-5 text-blue-700" />
-          <h2 className="font-display text-xl font-bold text-slate-900">Prepare a news campaign</h2>
+          <h2 className="font-display text-xl font-bold text-slate-900">Preview a newsletter</h2>
         </div>
-        <p className="mt-2 text-sm leading-6 text-slate-600">Publishing an article never sends email by itself. Preview and confirm a single campaign here; a scheduled worker processes recipients in small batches.</p>
+        <p className="mt-2 text-sm leading-6 text-slate-600">Publishing a news article automatically queues one notification. The scheduled worker sends it only to subscribers who confirmed before that article was published.</p>
 
         <div className="mt-5 grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto]">
           <label className="sr-only" htmlFor="newsletter-article">Published article</label>
@@ -197,9 +174,7 @@ export default function AdminNewsletter() {
                 <p className="font-semibold text-slate-900">{preview.article.title}</p>
                 <p className="mt-1 text-sm text-slate-600">{preview.recipientCount} confirmed active recipient{preview.recipientCount === 1 ? '' : 's'} · Subject: {preview.subject}</p>
               </div>
-              <button type="button" disabled={!preview.recipientCount || Boolean(busy)} onClick={queueCampaign} className="btn-primary inline-flex items-center justify-center gap-2 rounded-xl px-4 py-3 text-sm font-semibold disabled:opacity-50">
-                {busy === 'campaign' ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />} Confirm and queue campaign
-              </button>
+              <p className="text-sm font-semibold text-blue-800">New articles are queued automatically when published</p>
             </div>
             <iframe title="Newsletter email preview" srcDoc={preview.html} sandbox="" className="mt-4 h-[620px] w-full rounded-xl border border-slate-200 bg-slate-100" />
             <form onSubmit={sendTest} className="mt-4 flex flex-col gap-2 sm:flex-row">
@@ -232,7 +207,7 @@ export default function AdminNewsletter() {
                   </div>
                   <p className="mt-1 text-sm text-slate-500">/{campaign.articleSlug} · Created {formatDate(campaign.createdAt)}</p>
                   <p className="mt-2 text-xs text-slate-600">
-                    {campaign.recipientCount} recipients · {campaign.acceptedCount} accepted · {campaign.deliveredCount} delivered · {campaign.failedCount} failed · {campaign.pendingCount} pending
+                    {campaign.recipientCount} recipients · {campaign.acceptedCount} accepted · {campaign.deliveredCount} delivered · {campaign.failedCount} failed · {campaign.uncertainCount} uncertain · {campaign.pendingCount} pending
                   </p>
                 </div>
                 {campaign.failedCount > 0 ? (
